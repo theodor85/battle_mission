@@ -83,9 +83,14 @@ def draw_tiles(surface, tile_map, camera):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.surf = pygame.Surface((50, 50))
-        self.surf.fill(BLUE)
-        self.rect = self.surf.get_rect()
+        self.images = {
+            'up':    pygame.image.load("resources/tank_up.png"),
+            'down':  pygame.image.load("resources/tank_down.png"),
+            'left':  pygame.image.load("resources/tank_left.png"),
+            'right': pygame.image.load("resources/tank_right.png"),
+        }
+        self.image = self.images['up']
+        self.rect = self.image.get_rect()
 
         self.x = float(WORLD_WIDTH // 2)
         self.y = float(WORLD_HEIGHT // 2)
@@ -100,6 +105,16 @@ class Player(pygame.sprite.Sprite):
         self.x += self.speed_x
         self.y += self.speed_y
         self.keep_on_map()
+        self.update_direction()
+
+    def update_direction(self):
+        if abs(self.speed_x) < 0.01 and abs(self.speed_y) < 0.01:
+            return
+        if abs(self.speed_x) >= abs(self.speed_y):
+            direction = 'right' if self.speed_x > 0 else 'left'
+        else:
+            direction = 'down' if self.speed_y > 0 else 'up'
+        self.image = self.images[direction]
 
     def handle_input(self):
         self.moving_power_x = 0
@@ -178,7 +193,7 @@ while True:
 
     DISPLAYSURF.fill(BLACK)
     draw_tiles(DISPLAYSURF, tile_map, camera)
-    DISPLAYSURF.blit(P1.surf, camera.apply(P1.x, P1.y))
+    DISPLAYSURF.blit(P1.image, camera.apply(P1.x, P1.y))
 
     pygame.display.update()
     FramePerSec.tick(FPS)
