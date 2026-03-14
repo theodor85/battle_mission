@@ -62,6 +62,20 @@ def generate_map():
     return tile_map
 
 
+def get_blocked_rects(tile_map, x, y, w, h):
+    col_start = max(0, int(x // TILE_SIZE))
+    row_start = max(0, int(y // TILE_SIZE))
+    col_end = min(MAP_COLS, int((x + w) // TILE_SIZE) + 1)
+    row_end = min(MAP_ROWS, int((y + h) // TILE_SIZE) + 1)
+
+    rects = []
+    for r in range(row_start, row_end):
+        for c in range(col_start, col_end):
+            if tile_map[r][c] in (ROCK, WATER):
+                rects.append(pygame.Rect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+    return rects
+
+
 def draw_tiles(surface, tile_map, camera):
     start_col = max(0, int(camera.x // TILE_SIZE))
     start_row = max(0, int(camera.y // TILE_SIZE))
@@ -99,11 +113,23 @@ class Player(pygame.sprite.Sprite):
         self.moving_power_x = 0
         self.moving_power_y = 0
 
-    def move(self):
+    def move(self, tile_map):
         self.handle_input()
         self.calculate_speed()
+        w, h = self.rect.width, self.rect.height
+
         self.x += self.speed_x
+        tank_rect = pygame.Rect(self.x, self.y, w, h)
+        if tank_rect.collidelist(get_blocked_rects(tile_map, self.x, self.y, w, h)) != -1:
+            self.x -= self.speed_x
+            self.speed_x = 0
+
         self.y += self.speed_y
+        tank_rect = pygame.Rect(self.x, self.y, w, h)
+        if tank_rect.collidelist(get_blocked_rects(tile_map, self.x, self.y, w, h)) != -1:
+            self.y -= self.speed_y
+            self.speed_y = 0
+
         self.keep_on_map()
         self.update_direction()
 
@@ -182,13 +208,22 @@ tile_map = generate_map()
 camera = Camera()
 P1 = Player()
 
+# Найти стартовый тайл GROUND вблизи центра карты
+for dr in range(MAP_ROWS // 2):
+    start_r = MAP_ROWS // 2 + dr
+    start_c = MAP_COLS // 2
+    if tile_map[start_r][start_c] == GROUND:
+        P1.x = float(start_c * TILE_SIZE)
+        P1.y = float(start_r * TILE_SIZE)
+        break
+
 while True:
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
 
-    P1.move()
+    P1.move(tile_map)
     camera.update(P1)
 
     DISPLAYSURF.fill(BLACK)
