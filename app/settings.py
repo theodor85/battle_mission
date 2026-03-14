@@ -1,0 +1,40 @@
+import pygame
+
+# Screen
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 1000
+FPS = 60
+
+# Colors
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
+# Map
+TILE_SIZE = 50
+MAP_COLS = 50
+MAP_ROWS = 50
+WORLD_WIDTH = MAP_COLS * TILE_SIZE
+WORLD_HEIGHT = MAP_ROWS * TILE_SIZE
+
+# Tile types
+GROUND = 0
+ROCK = 1
+WATER = 2
+
+TILE_COLORS = {
+    GROUND: (34, 139, 34),
+    ROCK: (128, 128, 128),
+    WATER: (0, 105, 148),
+}
+
+# Physics
+MASS = 15.0
+MOVING_POWER = 10.0
+DAMPING = 0.85
+
+# Camera
+LOOK_AHEAD_FACTOR = 15.0
+SMOOTH_FACTOR = 0.08
