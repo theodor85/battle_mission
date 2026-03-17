@@ -1,7 +1,124 @@
 import pygame
-from pygame.locals import K_w, K_s, K_a, K_d
+from pygame.locals import K_w, K_s, K_a, K_d, K_SPACE
 
-from app.settings import WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING
+import random
+
+from app.settings import (
+    WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING,
+    TILE_SIZE, MAP_COLS, MAP_ROWS, ROCK,
+    BULLET_SPEED, SHOOT_COOLDOWN, TURRET_SHOOT_COOLDOWN,
+)
+
+
+class Bullet:
+    _DIRECTION_VECTORS = {
+        'up':    ( 0, -1),
+        'down':  ( 0,  1),
+        'left':  (-1,  0),
+        'right': ( 1,  0),
+    }
+    _images = None
+
+    @classmethod
+    def _load_images(cls):
+        base = pygame.image.load("resources/shell_8x16.png").convert_alpha()
+        cls._images = {
+            'up':    base,
+            'down':  pygame.transform.rotate(base, 180),
+            'left':  pygame.transform.rotate(base, 90),
+            'right': pygame.transform.rotate(base, -90),
+        }
+
+    def __init__(self, player_x, player_y, direction, player_w, player_h):
+        if Bullet._images is None:
+            Bullet._load_images()
+        dx, dy = self._DIRECTION_VECTORS[direction]
+        self.image = self._images[direction]
+        w, h = self.image.get_size()
+
+        # Спавн: центр танка + смещение вперёд вдоль направления
+        center_x = player_x + player_w / 2
+        center_y = player_y + player_h / 2
+        offset = player_w / 2 + h / 2 if direction in ('up', 'down') else player_h / 2 + w / 2
+        self.x = center_x + dx * offset - w / 2
+        self.y = center_y + dy * offset - h / 2
+
+        self.vx = dx * BULLET_SPEED
+        self.vy = dy * BULLET_SPEED
+        self.alive = True
+        self._w = w
+        self._h = h
+
+    def update(self, dt, game_map):
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+
+        if (self.x < 0 or self.x + self._w >= WORLD_WIDTH
+                or self.y < 0 or self.y + self._h >= WORLD_HEIGHT):
+            self.alive = False
+            return
+
+        # Проверяем тайл в центре снаряда
+        cx = self.x + self._w / 2
+        cy = self.y + self._h / 2
+        col = int(cx // TILE_SIZE)
+        row = int(cy // TILE_SIZE)
+        if 0 <= row < MAP_ROWS and 0 <= col < MAP_COLS:
+            if game_map.tiles[row][col] == ROCK:
+                self.alive = False
+
+    def draw(self, surface, camera):
+        surface.blit(self.image, camera.apply(self.x, self.y))
+
+
+class Turret:
+    def __init__(self, x, y):
+        self.images = {
+            'up': pygame.image.load("resources/turret_enemy_up.png").convert_alpha(),
+            'down': pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
+            'left': pygame.image.load("resources/turret_enemy_left.png").convert_alpha(),
+            'right': pygame.image.load("resources/turret_enemy_right.png").convert_alpha(),
+        }
+        self.destroyed_image = pygame.image.load("resources/turret_destroyed.png").convert_alpha()
+        self.direction = 'down'
+        self.image = self.images[self.direction]
+        self.x = x
+        self.y = y
+        self._w = self.image.get_width()
+        self._h = self.image.get_height()
+        self.alive = True
+        self.shoot_timer = random.uniform(0, TURRET_SHOOT_COOLDOWN)
+
+    def update(self, dt, player):
+        if not self.alive:
+            return None
+
+        # Determine direction to player
+        cx = self.x + self._w / 2
+        cy = self.y + self._h / 2
+        px = player.x + player.rect.width / 2
+        py = player.y + player.rect.height / 2
+        dx = px - cx
+        dy = py - cy
+
+        if abs(dx) >= abs(dy):
+            self.direction = 'right' if dx > 0 else 'left'
+        else:
+            self.direction = 'down' if dy > 0 else 'up'
+        self.image = self.images[self.direction]
+
+        # Shoot
+        self.shoot_timer -= dt
+        if self.shoot_timer <= 0:
+            self.shoot_timer = TURRET_SHOOT_COOLDOWN
+            return Bullet(self.x, self.y, self.direction, self._w, self._h)
+        return None
+
+    def draw(self, surface, camera):
+        surface.blit(self.image, camera.apply(self.x, self.y))
+
+    def get_rect(self):
+        return pygame.Rect(self.x, self.y, self._w, self._h)
 
 
 class Player(pygame.sprite.Sprite):
@@ -22,6 +139,8 @@ class Player(pygame.sprite.Sprite):
         self.speed_y = 0.0
         self.moving_power_x = 0.0
         self.moving_power_y = 0.0
+        self.direction = 'up'
+        self.shoot_timer = 0.0
 
     def update(self, dt, game_map):
         self._handle_input()
@@ -97,4 +216,14 @@ class Player(pygame.sprite.Sprite):
             direction = 'right' if self.speed_x > 0 else 'left'
         else:
             direction = 'down' if self.speed_y > 0 else 'up'
+        self.direction = direction
         self.image = self.images[direction]
+
+    def shoot(self, dt):
+        self.shoot_timer -= dt
+        pressed = pygame.key.get_pressed()
+        if pressed[K_SPACE] and self.shoot_timer <= 0:
+            self.shoot_timer = SHOOT_COOLDOWN
+            return Bullet(self.x, self.y, self.direction,
+                          self.rect.width, self.rect.height)
+        return None

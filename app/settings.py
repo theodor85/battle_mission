@@ -47,3 +47,14 @@ DAMPING = 0.85
 # Camera
 LOOK_AHEAD_FACTOR = 15.0
 SMOOTH_FACTOR = 0.08
+
+# Bullets
+BULLET_SPEED = 400.0        # пикселей в секунду
+BULLET_WIDTH = 8             # ширина снаряда (поперёк направления)
+BULLET_HEIGHT = 16           # длина снаряда (вдоль направления)
+BULLET_COLOR = (255, 255, 0) # жёлтый
+SHOOT_COOLDOWN = 1.0         # секунд между выстрелами (1 раз в секунду)
+
+# Turrets
+NUMBER_OF_TURRETS = 5
+TURRET_SHOOT_COOLDOWN = 2.0  # секунд между выстрелами туррели
