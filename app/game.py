@@ -5,9 +5,10 @@ import pygame
 from pygame.locals import QUIT
 
 from app.settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK,
+    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, GREEN,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND, ROCK,
     NUMBER_OF_TURRETS, SPAWN_CLEAR_RADIUS,
+    PLAYER_MAX_HP, BULLET_DAMAGE,
 )
 from app.map import Map
 from app.entities import Player, Turret
@@ -34,6 +35,10 @@ class Game:
         ).convert_alpha()
         self.turret_hud_icon = pygame.transform.scale(
             pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
+            (50, 50),
+        )
+        self.tank_hud_icon = pygame.transform.scale(
+            pygame.image.load("resources/tank_up.png").convert_alpha(),
             (50, 50),
         )
 
@@ -122,10 +127,13 @@ class Game:
                 continue
             bullet_rect = pygame.Rect(b.x, b.y, b._w, b._h)
             if player_rect.colliderect(bullet_rect):
-                self.player.image = self.destroyed_tank_image
-                self.game_over = True
+                self.player.hp -= BULLET_DAMAGE
                 b.alive = False
-                break
+                if self.player.hp <= 0:
+                    self.player.hp = 0
+                    self.player.image = self.destroyed_tank_image
+                    self.game_over = True
+                    break
 
         # Remove dead bullets
         self.player_bullets = [b for b in self.player_bullets if b.alive]
@@ -145,8 +153,33 @@ class Game:
         pygame.display.update()
 
     def _draw_hud(self):
+        # HP bar in top-left corner
+        margin = 10
+        icon_size = 50
+        bar_width = 250
+        bar_height = 25
+        bar_gap = 10
+
+        # Tank icon
+        self.screen.blit(self.tank_hud_icon, (margin, margin))
+
+        # HP bar positioned to the right of icon, vertically centered
+        bar_x = margin + icon_size + bar_gap
+        bar_y = margin + (icon_size - bar_height) // 2
+
+        # Fill (green, proportional to HP)
+        hp_ratio = self.player.hp / PLAYER_MAX_HP
+        fill_width = int(bar_width * hp_ratio)
+        if fill_width > 0:
+            pygame.draw.rect(self.screen, GREEN,
+                             (bar_x, bar_y, fill_width, bar_height))
+
+        # Border (white outline, always visible)
+        pygame.draw.rect(self.screen, WHITE,
+                         (bar_x, bar_y, bar_width, bar_height), 2)
+
+        # Turret icons in top-right corner
         alive_count = sum(1 for t in self.turrets if t.alive)
-        margin = 20
         gap = 15
         for i in range(alive_count):
             x = SCREEN_WIDTH - 25 - margin - (i + 1) * 25 - i * gap

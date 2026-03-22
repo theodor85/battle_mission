@@ -7,6 +7,7 @@ from app.settings import (
     WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING,
     TILE_SIZE, MAP_COLS, MAP_ROWS, ROCK,
     BULLET_SPEED, SHOOT_COOLDOWN, TURRET_SHOOT_COOLDOWN,
+    PLAYER_MAX_HP,
 )
 
 
@@ -141,6 +142,7 @@ class Player(pygame.sprite.Sprite):
         self.moving_power_y = 0.0
         self.direction = 'up'
         self.shoot_timer = 0.0
+        self.hp = PLAYER_MAX_HP
 
     def update(self, dt, game_map):
         self._handle_input()
