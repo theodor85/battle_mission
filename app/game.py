@@ -32,6 +32,10 @@ class Game:
         self.destroyed_tank_image = pygame.image.load(
             "resources/tank_destroyed.png"
         ).convert_alpha()
+        self.turret_hud_icon = pygame.transform.scale(
+            pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
+            (50, 50),
+        )
 
     def _place_player_on_ground(self):
         for dr in range(MAP_ROWS // 2):
@@ -137,4 +141,13 @@ class Game:
         for b in self.enemy_bullets:
             b.draw(self.screen, self.camera)
         self.player.draw(self.screen, self.camera)
+        self._draw_hud()
         pygame.display.update()
+
+    def _draw_hud(self):
+        alive_count = sum(1 for t in self.turrets if t.alive)
+        margin = 20
+        gap = 15
+        for i in range(alive_count):
+            x = SCREEN_WIDTH - 25 - margin - (i + 1) * 25 - i * gap
+            self.screen.blit(self.turret_hud_icon, (x, margin))
