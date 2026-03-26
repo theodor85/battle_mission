@@ -5,15 +5,17 @@ import pygame
 from pygame.locals import QUIT
 
 from app.settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, DARK_GREEN, DARK_GRAY, ORANGE, RED,
+    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND, ROCK,
     NUMBER_OF_TURRETS, SPAWN_CLEAR_RADIUS,
-    PLAYER_MAX_HP, BULLET_DAMAGE,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
 )
 from app.map import Map
-from app.entities import Player, Turret, Explosion
+from app.entities import Player, Turret, Explosion, EntityList
 from app.camera import Camera
+from app.events import EventBus
+from app.collision import check_collisions
+from app.hud import HUD
 
 
 class Game:
@@ -29,25 +31,22 @@ class Game:
 
         self.map = Map()
         self.camera = Camera()
-        self.player = Player()
+        self.player = Player(self.map)
         self._place_player_on_ground()
         self.turrets = self._spawn_turrets()
-        self.player_bullets = []
-        self.enemy_bullets = []
-        self.explosions = []
+        self.player_bullets = EntityList()
+        self.enemy_bullets = EntityList()
+        self.explosions = EntityList()
         self.game_over = False
         self.destroyed_tank_image = pygame.image.load(
             "resources/tank_destroyed.png"
         ).convert_alpha()
-        self.turret_hud_icon = pygame.transform.scale(
-            pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
-            (50, 50),
-        )
-        self.tank_hud_icon = pygame.transform.scale(
-            pygame.image.load("resources/tank_up.png").convert_alpha(),
-            (50, 50),
-        )
-        self.hp_display = float(PLAYER_MAX_HP)
+        self.hud = HUD(self.player, self.turrets)
+
+        self.events = EventBus()
+        self.events.listen("turret_destroyed", self._on_turret_destroyed)
+        self.events.listen("player_hit", self._on_player_hit)
+        self.events.listen("bullet_hit_rock", self._on_bullet_hit_rock)
 
     def _place_player_on_ground(self):
         for dr in range(MAP_ROWS // 2):
@@ -71,21 +70,15 @@ class Game:
                     continue
                 candidates.append((r, c))
         chosen = random.sample(candidates, min(NUMBER_OF_TURRETS, len(candidates)))
-        return [Turret(c * TILE_SIZE, r * TILE_SIZE) for r, c in chosen]
+        return [Turret(c * TILE_SIZE, r * TILE_SIZE, self.map) for r, c in chosen]
 
     def run(self):
         while True:
             dt = self.clock.tick(FPS) / 1000.0
             self.handle_events()
             self.update(dt)
-            self._update_hp_display(dt)
+            self.hud.update(dt)
             self.draw()
-
-    def _update_hp_display(self, dt):
-        HP_BAR_SPEED = 120.0  # единиц HP в секунду
-        if self.hp_display > self.player.hp:
-            self.hp_display = max(float(self.player.hp),
-                                  self.hp_display - HP_BAR_SPEED * dt)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -97,84 +90,47 @@ class Game:
         # Keep updating explosions even after game over
         for exp in self.explosions:
             exp.update(dt)
-        self.explosions = [e for e in self.explosions if e.alive]
+        self.explosions.prune()
 
         if self.game_over:
             return
 
-        self.player.update(dt, self.map)
-        self.camera.update(self.player, dt)
+        self.player.update(dt)
+        self.camera.update(self.player.x, self.player.y,
+                           self.player.speed_x, self.player.speed_y, dt)
 
         # Player shooting
         bullet = self.player.shoot(dt)
         if bullet is not None:
-            self.player_bullets.append(bullet)
+            self.player_bullets.add(bullet)
 
         # Turret updates and shooting
+        player_center = (self.player.x + self.player.width / 2,
+                         self.player.y + self.player.height / 2)
         for turret in self.turrets:
-            enemy_bullet = turret.update(dt, self.player)
+            turret.target_pos = player_center
+            enemy_bullet = turret.update(dt)
             if enemy_bullet is not None:
-                self.enemy_bullets.append(enemy_bullet)
+                self.enemy_bullets.add(enemy_bullet)
 
         # Update all bullets
         for b in self.player_bullets:
-            b.update(dt, self.map)
+            b.update(dt)
         for b in self.enemy_bullets:
-            b.update(dt, self.map)
+            b.update(dt)
 
-        # Player bullets vs turrets
-        for turret in self.turrets:
-            if not turret.alive:
-                continue
-            turret_rect = turret.get_rect()
-            for b in self.player_bullets:
-                if not b.alive:
-                    continue
-                bullet_rect = pygame.Rect(b.x, b.y, b._w, b._h)
-                if turret_rect.colliderect(bullet_rect):
-                    turret.alive = False
-                    turret.image = turret.destroyed_image
-                    b.alive = False
-                    cx = turret.x + turret._w / 2
-                    cy = turret.y + turret._h / 2
-                    self.explosions.append(Explosion(cx, cy))
-
-        # Enemy bullets vs player
-        player_rect = pygame.Rect(
-            self.player.x, self.player.y,
-            self.player.rect.width, self.player.rect.height,
+        # Collisions (posts events handled by _on_* methods)
+        check_collisions(
+            self.player, self.player_bullets, self.enemy_bullets,
+            self.turrets, self.events,
         )
-        for b in self.enemy_bullets:
-            if not b.alive:
-                continue
-            bullet_rect = pygame.Rect(b.x, b.y, b._w, b._h)
-            if player_rect.colliderect(bullet_rect):
-                self.player.hp -= BULLET_DAMAGE
-                b.alive = False
-                self.explosions.append(
-                    Explosion(b.x + b._w / 2, b.y + b._h / 2))
-                if self.player.hp <= 0:
-                    self.player.hp = 0
-                    self.player.image = self.destroyed_tank_image
-                    self.game_over = True
-                    pygame.mixer.music.fadeout(MUSIC_FADEOUT_MS)
-                    break
 
-        # Explosions for bullets that hit rocks
-        for b in self.player_bullets + self.enemy_bullets:
-            if not b.alive and b.hit_pos is not None:
-                self.explosions.append(
-                    Explosion(b.hit_pos[0] + b._w / 2,
-                              b.hit_pos[1] + b._h / 2))
-
-        # Remove dead bullets
-        self.player_bullets = [b for b in self.player_bullets if b.alive]
-        self.enemy_bullets = [b for b in self.enemy_bullets if b.alive]
-
-        # Update explosions
+        # Prune dead entities
+        self.player_bullets.prune()
+        self.enemy_bullets.prune()
         for exp in self.explosions:
             exp.update(dt)
-        self.explosions = [e for e in self.explosions if e.alive]
+        self.explosions.prune()
 
     def draw(self):
         self.screen.fill(BLACK)
@@ -188,51 +144,23 @@ class Game:
         self.player.draw(self.screen, self.camera)
         for exp in self.explosions:
             exp.draw(self.screen, self.camera)
-        self._draw_hud()
+        self.hud.draw(self.screen)
         pygame.display.update()
 
-    def _draw_hud(self):
-        # HP bar in top-left corner
-        margin = 10
-        icon_size = 50
-        bar_width = 250
-        bar_height = 25
-        bar_gap = 10
+    # ── Event handlers ──────────────────────────────────────────
 
-        # Tank icon
-        self.screen.blit(self.tank_hud_icon, (margin, margin))
+    def _on_turret_destroyed(self, data):
+        data["turret"].destroy()
+        self.explosions.add(Explosion(data["x"], data["y"]))
 
-        # HP bar positioned to the right of icon, vertically centered
-        bar_x = margin + icon_size + bar_gap
-        bar_y = margin + (icon_size - bar_height) // 2
+    def _on_player_hit(self, data):
+        self.player.hp -= data["damage"]
+        self.explosions.add(Explosion(data["x"], data["y"]))
+        if self.player.hp <= 0:
+            self.player.hp = 0
+            self.player.image = self.destroyed_tank_image
+            self.game_over = True
+            pygame.mixer.music.fadeout(MUSIC_FADEOUT_MS)
 
-        # Fill (color depends on displayed HP), proportional to displayed HP
-        hp_ratio = self.hp_display / PLAYER_MAX_HP
-        fill_width = int(bar_width * hp_ratio)
-        if self.hp_display <= 20:
-            bar_color = RED
-        elif self.hp_display <= 60:
-            bar_color = ORANGE
-        else:
-            bar_color = DARK_GREEN
-        radius = bar_height // 2
-        if fill_width > 0:
-            right_radius = radius if fill_width >= bar_width else 0
-            pygame.draw.rect(self.screen, bar_color,
-                             (bar_x, bar_y, fill_width, bar_height),
-                             border_top_left_radius=radius,
-                             border_bottom_left_radius=radius,
-                             border_top_right_radius=right_radius,
-                             border_bottom_right_radius=right_radius)
-
-        # Border (dark outline, always visible)
-        pygame.draw.rect(self.screen, DARK_GRAY,
-                         (bar_x, bar_y, bar_width, bar_height),
-                         2, border_radius=radius)
-
-        # Turret icons in top-right corner
-        alive_count = sum(1 for t in self.turrets if t.alive)
-        gap = 15
-        for i in range(alive_count):
-            x = SCREEN_WIDTH - 25 - margin - (i + 1) * 25 - i * gap
-            self.screen.blit(self.turret_hud_icon, (x, margin))
+    def _on_bullet_hit_rock(self, data):
+        self.explosions.add(Explosion(data["x"], data["y"]))

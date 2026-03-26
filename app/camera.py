@@ -9,9 +9,9 @@ class Camera:
         self.x = 0.0
         self.y = 0.0
 
-    def update(self, player, dt):
-        target_x = (player.x + player.speed_x * LOOK_AHEAD_FACTOR) - SCREEN_WIDTH / 2
-        target_y = (player.y + player.speed_y * LOOK_AHEAD_FACTOR) - SCREEN_HEIGHT / 2
+    def update(self, target_x, target_y, vel_x, vel_y, dt):
+        target_x = (target_x + vel_x * LOOK_AHEAD_FACTOR) - SCREEN_WIDTH / 2
+        target_y = (target_y + vel_y * LOOK_AHEAD_FACTOR) - SCREEN_HEIGHT / 2
 
         self.x += (target_x - self.x) * SMOOTH_FACTOR
         self.y += (target_y - self.y) * SMOOTH_FACTOR
