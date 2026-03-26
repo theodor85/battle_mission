@@ -9,8 +9,11 @@ FPS = 60
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+DARK_GREEN = (0, 100, 0)
+ORANGE = (220, 220, 0) # было 140
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+DARK_GRAY = (60, 60, 60)
 
 # Map
 TILE_SIZE = 50
@@ -61,4 +64,14 @@ TURRET_SHOOT_COOLDOWN = 2.0  # секунд между выстрелами ту
 
 # Player HP
 PLAYER_MAX_HP = 100
-BULLET_DAMAGE = 50
+BULLET_DAMAGE = 40
+
+# Explosions
+EXPLOSION_FRAME_SIZE = 64
+EXPLOSION_FRAME_COUNT = 9
+EXPLOSION_FPS = 10
+
+# Music
+MUSIC_PATH = "resources/Azure Circuit.mp3"
+MUSIC_VOLUME = 0.1
+MUSIC_FADEOUT_MS = 2000  # плавное затухание при game over (мс)

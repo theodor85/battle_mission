@@ -8,6 +8,7 @@ from app.settings import (
     TILE_SIZE, MAP_COLS, MAP_ROWS, ROCK,
     BULLET_SPEED, SHOOT_COOLDOWN, TURRET_SHOOT_COOLDOWN,
     PLAYER_MAX_HP,
+    EXPLOSION_FRAME_SIZE, EXPLOSION_FRAME_COUNT, EXPLOSION_FPS,
 )
 
 
@@ -47,6 +48,7 @@ class Bullet:
         self.vx = dx * BULLET_SPEED
         self.vy = dy * BULLET_SPEED
         self.alive = True
+        self.hit_pos = None
         self._w = w
         self._h = h
 
@@ -66,6 +68,7 @@ class Bullet:
         row = int(cy // TILE_SIZE)
         if 0 <= row < MAP_ROWS and 0 <= col < MAP_COLS:
             if game_map.tiles[row][col] == ROCK:
+                self.hit_pos = (self.x, self.y)
                 self.alive = False
 
     def draw(self, surface, camera):
@@ -229,3 +232,42 @@ class Player(pygame.sprite.Sprite):
             return Bullet(self.x, self.y, self.direction,
                           self.rect.width, self.rect.height)
         return None
+
+
+class Explosion:
+    _frames = None
+
+    @classmethod
+    def _load_frames(cls):
+        sheet = pygame.image.load(
+            "resources/explosion_spritesheet.png"
+        ).convert_alpha()
+        cls._frames = []
+        for i in range(EXPLOSION_FRAME_COUNT):
+            frame = sheet.subsurface(
+                i * EXPLOSION_FRAME_SIZE, 0,
+                EXPLOSION_FRAME_SIZE, EXPLOSION_FRAME_SIZE,
+            )
+            cls._frames.append(frame)
+
+    def __init__(self, cx, cy):
+        if Explosion._frames is None:
+            Explosion._load_frames()
+        self.x = cx - EXPLOSION_FRAME_SIZE / 2
+        self.y = cy - EXPLOSION_FRAME_SIZE / 2
+        self.timer = 0.0
+        self.frame_index = 0
+        self.alive = True
+
+    def update(self, dt):
+        self.timer += dt
+        self.frame_index = int(self.timer * EXPLOSION_FPS)
+        if self.frame_index >= EXPLOSION_FRAME_COUNT:
+            self.alive = False
+
+    def draw(self, surface, camera):
+        if self.alive:
+            surface.blit(
+                Explosion._frames[self.frame_index],
+                camera.apply(self.x, self.y),
+            )

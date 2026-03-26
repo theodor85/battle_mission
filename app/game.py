@@ -5,13 +5,14 @@ import pygame
 from pygame.locals import QUIT
 
 from app.settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, WHITE, GREEN,
+    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, DARK_GREEN, DARK_GRAY, ORANGE, RED,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND, ROCK,
     NUMBER_OF_TURRETS, SPAWN_CLEAR_RADIUS,
     PLAYER_MAX_HP, BULLET_DAMAGE,
+    MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
 )
 from app.map import Map
-from app.entities import Player, Turret
+from app.entities import Player, Turret, Explosion
 from app.camera import Camera
 
 
@@ -22,6 +23,10 @@ class Game:
         pygame.display.set_caption("Moving")
         self.clock = pygame.time.Clock()
 
+        pygame.mixer.music.load(MUSIC_PATH)
+        pygame.mixer.music.set_volume(MUSIC_VOLUME)
+        pygame.mixer.music.play(loops=-1)
+
         self.map = Map()
         self.camera = Camera()
         self.player = Player()
@@ -29,6 +34,7 @@ class Game:
         self.turrets = self._spawn_turrets()
         self.player_bullets = []
         self.enemy_bullets = []
+        self.explosions = []
         self.game_over = False
         self.destroyed_tank_image = pygame.image.load(
             "resources/tank_destroyed.png"
@@ -41,6 +47,7 @@ class Game:
             pygame.image.load("resources/tank_up.png").convert_alpha(),
             (50, 50),
         )
+        self.hp_display = float(PLAYER_MAX_HP)
 
     def _place_player_on_ground(self):
         for dr in range(MAP_ROWS // 2):
@@ -71,7 +78,14 @@ class Game:
             dt = self.clock.tick(FPS) / 1000.0
             self.handle_events()
             self.update(dt)
+            self._update_hp_display(dt)
             self.draw()
+
+    def _update_hp_display(self, dt):
+        HP_BAR_SPEED = 120.0  # единиц HP в секунду
+        if self.hp_display > self.player.hp:
+            self.hp_display = max(float(self.player.hp),
+                                  self.hp_display - HP_BAR_SPEED * dt)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -80,6 +94,11 @@ class Game:
                 sys.exit()
 
     def update(self, dt):
+        # Keep updating explosions even after game over
+        for exp in self.explosions:
+            exp.update(dt)
+        self.explosions = [e for e in self.explosions if e.alive]
+
         if self.game_over:
             return
 
@@ -116,6 +135,9 @@ class Game:
                     turret.alive = False
                     turret.image = turret.destroyed_image
                     b.alive = False
+                    cx = turret.x + turret._w / 2
+                    cy = turret.y + turret._h / 2
+                    self.explosions.append(Explosion(cx, cy))
 
         # Enemy bullets vs player
         player_rect = pygame.Rect(
@@ -129,15 +151,30 @@ class Game:
             if player_rect.colliderect(bullet_rect):
                 self.player.hp -= BULLET_DAMAGE
                 b.alive = False
+                self.explosions.append(
+                    Explosion(b.x + b._w / 2, b.y + b._h / 2))
                 if self.player.hp <= 0:
                     self.player.hp = 0
                     self.player.image = self.destroyed_tank_image
                     self.game_over = True
+                    pygame.mixer.music.fadeout(MUSIC_FADEOUT_MS)
                     break
+
+        # Explosions for bullets that hit rocks
+        for b in self.player_bullets + self.enemy_bullets:
+            if not b.alive and b.hit_pos is not None:
+                self.explosions.append(
+                    Explosion(b.hit_pos[0] + b._w / 2,
+                              b.hit_pos[1] + b._h / 2))
 
         # Remove dead bullets
         self.player_bullets = [b for b in self.player_bullets if b.alive]
         self.enemy_bullets = [b for b in self.enemy_bullets if b.alive]
+
+        # Update explosions
+        for exp in self.explosions:
+            exp.update(dt)
+        self.explosions = [e for e in self.explosions if e.alive]
 
     def draw(self):
         self.screen.fill(BLACK)
@@ -149,6 +186,8 @@ class Game:
         for b in self.enemy_bullets:
             b.draw(self.screen, self.camera)
         self.player.draw(self.screen, self.camera)
+        for exp in self.explosions:
+            exp.draw(self.screen, self.camera)
         self._draw_hud()
         pygame.display.update()
 
@@ -167,16 +206,29 @@ class Game:
         bar_x = margin + icon_size + bar_gap
         bar_y = margin + (icon_size - bar_height) // 2
 
-        # Fill (green, proportional to HP)
-        hp_ratio = self.player.hp / PLAYER_MAX_HP
+        # Fill (color depends on displayed HP), proportional to displayed HP
+        hp_ratio = self.hp_display / PLAYER_MAX_HP
         fill_width = int(bar_width * hp_ratio)
+        if self.hp_display <= 20:
+            bar_color = RED
+        elif self.hp_display <= 60:
+            bar_color = ORANGE
+        else:
+            bar_color = DARK_GREEN
+        radius = bar_height // 2
         if fill_width > 0:
-            pygame.draw.rect(self.screen, GREEN,
-                             (bar_x, bar_y, fill_width, bar_height))
+            right_radius = radius if fill_width >= bar_width else 0
+            pygame.draw.rect(self.screen, bar_color,
+                             (bar_x, bar_y, fill_width, bar_height),
+                             border_top_left_radius=radius,
+                             border_bottom_left_radius=radius,
+                             border_top_right_radius=right_radius,
+                             border_bottom_right_radius=right_radius)
 
-        # Border (white outline, always visible)
-        pygame.draw.rect(self.screen, WHITE,
-                         (bar_x, bar_y, bar_width, bar_height), 2)
+        # Border (dark outline, always visible)
+        pygame.draw.rect(self.screen, DARK_GRAY,
+                         (bar_x, bar_y, bar_width, bar_height),
+                         2, border_radius=radius)
 
         # Turret icons in top-right corner
         alive_count = sum(1 for t in self.turrets if t.alive)
