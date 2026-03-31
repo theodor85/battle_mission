@@ -13,6 +13,7 @@ DARK_GREEN = (0, 100, 0)
 ORANGE = (220, 220, 0) # было 140
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+COLOR_INK_DARK_DARKEST = (12, 26, 41)
 DARK_GRAY = (60, 60, 60)
 
 # Map
@@ -75,3 +76,10 @@ EXPLOSION_FPS = 10
 MUSIC_PATH = "resources/Azure Circuit.mp3"
 MUSIC_VOLUME = 0.1
 MUSIC_FADEOUT_MS = 2000  # плавное затухание при game over (мс)
+
+# Scene fonts
+TITLE_FONT_SIZE = 72
+SUBTITLE_FONT_SIZE = 36
+
+# Scene transition delay after game over (seconds)
+GAME_OVER_DELAY = 2.5
