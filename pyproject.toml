@@ -1,0 +1,15 @@
+[project]
+name = "battle_mission"
+version = "0.1.0"
+description = "Battle Mission"
+requires-python = "==3.12.12"
+dependencies = [
+    "pygame==2.6.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = []
