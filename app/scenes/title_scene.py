@@ -116,7 +116,7 @@ class TitleScene(Scene):
             items = self._settings_items()
 
         cx = SCREEN_WIDTH // 2
-        start_y = SCREEN_HEIGHT // 2 + 140
+        start_y = SCREEN_HEIGHT // 2 + 250
         line_h = 50
 
         for i, text in enumerate(items):
