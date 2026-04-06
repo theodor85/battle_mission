@@ -34,14 +34,8 @@ TILE_COLORS = {
     WATER: (0, 105, 148),
 }
 
-# Terrain generation
-ROCK_SEED_CHANCE = 0.22
-ROCK_SMOOTH_ITERATIONS = 5
-ROCK_NEIGHBOR_THRESHOLD = 4
-RIVER_COUNT = 2
-LAKE_COUNT = 3
-LAKE_MAX_SIZE = 25
-SPAWN_CLEAR_RADIUS = 3
+# Terrain generation — see app/landscape.py for profiles
+from app.landscape import STEPPE as DEFAULT_LANDSCAPE
 
 # Physics
 MASS = 15.0

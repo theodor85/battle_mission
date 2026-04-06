@@ -8,9 +8,9 @@ from app.scenes.scene import Scene
 from app.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND,
-    NUMBER_OF_TURRETS, SPAWN_CLEAR_RADIUS,
+    NUMBER_OF_TURRETS,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
-    GAME_OVER_DELAY,
+    GAME_OVER_DELAY, DEFAULT_LANDSCAPE,
 )
 from app.map import Map
 from app.entities import Player, Turret, Explosion, EntityList
@@ -21,14 +21,16 @@ from app.hud import HUD
 
 
 class GameScene(Scene):
-    def __init__(self, screen, clock):
+    def __init__(self, screen, clock, music_on=True, landscape=None):
         super().__init__(screen, clock)
+        self._music_on = music_on
+        self._landscape = landscape or DEFAULT_LANDSCAPE
 
         pygame.mixer.music.load(MUSIC_PATH)
-        pygame.mixer.music.set_volume(MUSIC_VOLUME)
+        pygame.mixer.music.set_volume(MUSIC_VOLUME if music_on else 0)
         pygame.mixer.music.play(loops=-1)
 
-        self.map = Map()
+        self.map = Map(profile=self._landscape)
         self.camera = Camera()
         self.player = Player(self.map)
         self._place_player_on_ground()
@@ -61,13 +63,14 @@ class GameScene(Scene):
     def _spawn_turrets(self):
         center_r = MAP_ROWS // 2
         center_c = MAP_COLS // 2
+        clear_radius = self._landscape.spawn_clear_radius
         candidates = []
         for r in range(MAP_ROWS):
             for c in range(MAP_COLS):
                 if self.map.tiles[r][c] != GROUND:
                     continue
-                if (abs(r - center_r) <= SPAWN_CLEAR_RADIUS
-                        and abs(c - center_c) <= SPAWN_CLEAR_RADIUS):
+                if (abs(r - center_r) <= clear_radius
+                        and abs(c - center_c) <= clear_radius):
                     continue
                 candidates.append((r, c))
         chosen = random.sample(candidates, min(NUMBER_OF_TURRETS, len(candidates)))
@@ -101,6 +104,8 @@ class GameScene(Scene):
                 self.next_scene = GameOverScene(
                     self.screen, self.clock, self._game_over_title,
                     background=self.screen.copy(),
+                    music_on=self._music_on,
+                    landscape=self._landscape,
                 )
             return
 

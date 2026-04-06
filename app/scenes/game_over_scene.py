@@ -13,10 +13,13 @@ _OVERLAY_ALPHA = 100  # прозрачность тёмного затемнен
 
 
 class GameOverScene(Scene):
-    def __init__(self, screen, clock, title, background=None):
+    def __init__(self, screen, clock, title, background=None,
+                 music_on=True, landscape=None):
         super().__init__(screen, clock)
         self._title = title
         self._background = background
+        self._music_on = music_on
+        self._landscape = landscape
         self._title_font = pygame.font.SysFont(None, TITLE_FONT_SIZE)
         self._subtitle_font = pygame.font.SysFont(None, SUBTITLE_FONT_SIZE)
         self._overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -29,7 +32,11 @@ class GameOverScene(Scene):
                 sys.exit()
             if event.type == KEYDOWN and event.key == K_RETURN:
                 from app.scenes.game_scene import GameScene
-                self.next_scene = GameScene(self.screen, self.clock)
+                self.next_scene = GameScene(
+                    self.screen, self.clock,
+                    music_on=self._music_on,
+                    landscape=self._landscape,
+                )
 
     def update(self, dt):
         pass

@@ -6,13 +6,13 @@ import pygame
 from app.settings import (
     TILE_SIZE, MAP_COLS, MAP_ROWS, SCREEN_WIDTH, SCREEN_HEIGHT,
     GROUND, ROCK, WATER, TILE_COLORS,
-    ROCK_SEED_CHANCE, ROCK_SMOOTH_ITERATIONS, ROCK_NEIGHBOR_THRESHOLD,
-    RIVER_COUNT, LAKE_COUNT, LAKE_MAX_SIZE, SPAWN_CLEAR_RADIUS,
+    DEFAULT_LANDSCAPE,
 )
 
 
 class Map:
-    def __init__(self):
+    def __init__(self, profile=None):
+        self.profile = profile or DEFAULT_LANDSCAPE
         self.tiles = [[GROUND] * MAP_COLS for _ in range(MAP_ROWS)]
         self._generate_mountains()
         self._generate_rivers()
@@ -21,13 +21,14 @@ class Map:
         self._ensure_connectivity()
 
     def _generate_mountains(self):
+        p = self.profile
         grid = [[GROUND] * MAP_COLS for _ in range(MAP_ROWS)]
         for r in range(MAP_ROWS):
             for c in range(MAP_COLS):
-                if random.random() < ROCK_SEED_CHANCE:
+                if random.random() < p.rock_seed_chance:
                     grid[r][c] = ROCK
 
-        for _ in range(ROCK_SMOOTH_ITERATIONS):
+        for _ in range(p.rock_smooth_iterations):
             new_grid = [[GROUND] * MAP_COLS for _ in range(MAP_ROWS)]
             for r in range(MAP_ROWS):
                 for c in range(MAP_COLS):
@@ -42,9 +43,9 @@ class Map:
                                     neighbors += 1
                             else:
                                 neighbors += 1
-                    if neighbors >= ROCK_NEIGHBOR_THRESHOLD:
+                    if neighbors >= p.rock_neighbor_threshold:
                         new_grid[r][c] = ROCK
-                    elif grid[r][c] == ROCK and neighbors >= ROCK_NEIGHBOR_THRESHOLD - 1:
+                    elif grid[r][c] == ROCK and neighbors >= p.rock_neighbor_threshold - 1:
                         new_grid[r][c] = ROCK
             grid = new_grid
 
@@ -54,7 +55,7 @@ class Map:
                     self.tiles[r][c] = ROCK
 
     def _generate_rivers(self):
-        for _ in range(RIVER_COUNT):
+        for _ in range(self.profile.river_count):
             self._carve_river()
 
     def _carve_river(self):
@@ -102,7 +103,7 @@ class Map:
             steps += 1
 
     def _generate_lakes(self):
-        for _ in range(LAKE_COUNT):
+        for _ in range(self.profile.lake_count):
             self._flood_lake()
 
     def _flood_lake(self):
@@ -114,7 +115,7 @@ class Map:
         else:
             return
 
-        size = random.randint(LAKE_MAX_SIZE // 2, LAKE_MAX_SIZE)
+        size = random.randint(self.profile.lake_max_size // 2, self.profile.lake_max_size)
         queue = deque([(r, c)])
         visited = {(r, c)}
         filled = 0
@@ -138,8 +139,9 @@ class Map:
     def _clear_spawn_area(self):
         center_r = MAP_ROWS // 2
         center_c = MAP_COLS // 2
-        for r in range(center_r - SPAWN_CLEAR_RADIUS, center_r + SPAWN_CLEAR_RADIUS + 1):
-            for c in range(center_c - SPAWN_CLEAR_RADIUS, center_c + SPAWN_CLEAR_RADIUS + 1):
+        radius = self.profile.spawn_clear_radius
+        for r in range(center_r - radius, center_r + radius + 1):
+            for c in range(center_c - radius, center_c + radius + 1):
                 if 0 <= r < MAP_ROWS and 0 <= c < MAP_COLS:
                     self.tiles[r][c] = GROUND
 
