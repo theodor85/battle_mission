@@ -1,8 +1,12 @@
 from app.settings import BULLET_DAMAGE
 
 
-def check_collisions(player, player_bullets, enemy_bullets, turrets, events):
+def check_collisions(player, player_bullets, enemy_bullets,
+                     turrets, enemy_tanks, events):
     _bullets_vs_turrets(player_bullets, turrets, events)
+    _bullets_vs_turrets(enemy_bullets, turrets, events)
+    _bullets_vs_enemy_tanks(player_bullets, enemy_tanks, events)
+    _bullets_vs_enemy_tanks(enemy_bullets, enemy_tanks, events)
     _bullets_vs_player(enemy_bullets, player, events)
     _bullets_vs_rocks(player_bullets, enemy_bullets, events)
 
@@ -21,6 +25,22 @@ def _bullets_vs_turrets(bullets, turrets, events):
                             turret=turret,
                             x=turret.x + turret.width / 2,
                             y=turret.y + turret.height / 2)
+
+
+def _bullets_vs_enemy_tanks(bullets, enemy_tanks, events):
+    for tank in enemy_tanks:
+        if not tank.alive:
+            continue
+        trect = tank.get_rect()
+        for b in bullets:
+            if not b.alive:
+                continue
+            if trect.colliderect(b.get_rect()):
+                b.alive = False
+                events.post("enemy_tank_hit",
+                            tank=tank,
+                            x=b.x + b.width / 2,
+                            y=b.y + b.height / 2)
 
 
 def _bullets_vs_player(bullets, player, events):

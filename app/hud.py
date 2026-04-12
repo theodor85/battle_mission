@@ -7,9 +7,10 @@ from app.settings import (
 
 
 class HUD:
-    def __init__(self, player, turrets):
+    def __init__(self, player, turrets, enemy_tanks):
         self.player = player
         self.turrets = turrets
+        self.enemy_tanks = enemy_tanks
         self.hp_display = float(PLAYER_MAX_HP)
         self.tank_icon = pygame.transform.scale(
             pygame.image.load("resources/tank_up.png").convert_alpha(),
@@ -17,6 +18,10 @@ class HUD:
         )
         self.turret_icon = pygame.transform.scale(
             pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
+            (50, 50),
+        )
+        self.enemy_tank_icon = pygame.transform.scale(
+            pygame.image.load("resources/tank_enemy_down.png").convert_alpha(),
             (50, 50),
         )
 
@@ -29,6 +34,7 @@ class HUD:
     def draw(self, surface):
         self._draw_hp_bar(surface)
         self._draw_turret_count(surface)
+        self._draw_enemy_tank_count(surface)
 
     def _draw_hp_bar(self, surface):
         margin = 10
@@ -71,3 +77,12 @@ class HUD:
         for i in range(alive_count):
             x = SCREEN_WIDTH - 25 - margin - (i + 1) * 25 - i * gap
             surface.blit(self.turret_icon, (x, margin))
+
+    def _draw_enemy_tank_count(self, surface):
+        margin = 10
+        row_y = margin + 50 + 5
+        alive_count = sum(1 for t in self.enemy_tanks if t.alive)
+        gap = 15
+        for i in range(alive_count):
+            x = SCREEN_WIDTH - 25 - margin - (i + 1) * 25 - i * gap
+            surface.blit(self.enemy_tank_icon, (x, row_y))

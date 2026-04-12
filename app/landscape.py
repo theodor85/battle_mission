@@ -35,4 +35,15 @@ MOUNTAINS = LandscapeProfile(
     spawn_clear_radius=3,
 )
 
-LANDSCAPES = [STEPPE, MOUNTAINS]
+SWAMP = LandscapeProfile(
+    name="Swamp",
+    rock_seed_chance=0.18,
+    rock_smooth_iterations=5,
+    rock_neighbor_threshold=4,
+    river_count=3,
+    lake_count=20,
+    lake_max_size=18,
+    spawn_clear_radius=3,
+)
+
+LANDSCAPES = [STEPPE, MOUNTAINS, SWAMP]

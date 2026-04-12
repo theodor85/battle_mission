@@ -31,11 +31,12 @@ class Player(Entity):
         self.direction = 'up'
         self.shoot_timer = 0.0
         self.hp = PLAYER_MAX_HP
+        self.blockers = []
 
     def update(self, dt):
         self._handle_input()
         self._calculate_speed(dt)
-        self._apply_movement()
+        self._apply_movement(self.blockers)
         self._keep_on_map()
         self._update_direction()
 
@@ -66,16 +67,20 @@ class Player(Entity):
         if abs(self.speed_y) < 0.01:
             self.speed_y = 0.0
 
-    def _apply_movement(self):
+    def _apply_movement(self, blockers):
         self.x += self.speed_x
         tank_rect = pygame.Rect(self.x, self.y, self.width, self.height)
-        if tank_rect.collidelist(self.game_map.get_blocked_rects(self.x, self.y, self.width, self.height)) != -1:
+        blocked = self.game_map.get_blocked_rects(self.x, self.y, self.width, self.height)
+        blocked.extend(blockers)
+        if tank_rect.collidelist(blocked) != -1:
             self.x -= self.speed_x
             self.speed_x = 0.0
 
         self.y += self.speed_y
         tank_rect = pygame.Rect(self.x, self.y, self.width, self.height)
-        if tank_rect.collidelist(self.game_map.get_blocked_rects(self.x, self.y, self.width, self.height)) != -1:
+        blocked = self.game_map.get_blocked_rects(self.x, self.y, self.width, self.height)
+        blocked.extend(blockers)
+        if tank_rect.collidelist(blocked) != -1:
             self.y -= self.speed_y
             self.speed_y = 0.0
 
