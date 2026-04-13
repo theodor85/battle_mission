@@ -5,11 +5,12 @@ from pygame.locals import QUIT, KEYDOWN, K_RETURN
 
 from app.scenes.scene import Scene
 from app.settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, WHITE,
-    TITLE_FONT_SIZE, SUBTITLE_FONT_SIZE,
+    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SUBTITLE_FONT_SIZE, COLOR_INK_DARK_DARKEST,
 )
 
-_OVERLAY_ALPHA = 100  # прозрачность тёмного затемнения (0–255)
+_VICTORY_IMAGE_PATH = "resources/images/ui/Victory.png"
+_GAME_OVER_IMAGE_PATH = "resources/images/ui/Game Over.png"
 
 
 class GameOverScene(Scene):
@@ -20,10 +21,12 @@ class GameOverScene(Scene):
         self._background = background
         self._music_on = music_on
         self._landscape = landscape
-        self._title_font = pygame.font.SysFont(None, TITLE_FONT_SIZE)
         self._subtitle_font = pygame.font.SysFont(None, SUBTITLE_FONT_SIZE)
-        self._overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        self._overlay.fill((0, 0, 0, _OVERLAY_ALPHA))
+        self._is_victory = "Victory" in title
+
+        image_path = _VICTORY_IMAGE_PATH if self._is_victory else _GAME_OVER_IMAGE_PATH
+        raw = pygame.image.load(image_path).convert()
+        self._bg = pygame.transform.scale(raw, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -42,20 +45,11 @@ class GameOverScene(Scene):
         pass
 
     def draw(self):
-        if self._background is not None:
-            self.screen.blit(self._background, (0, 0))
-        else:
-            self.screen.fill(BLACK)
-
-        self.screen.blit(self._overlay, (0, 0))
+        self.screen.blit(self._bg, (0, 0))
 
         cx = SCREEN_WIDTH // 2
-        cy = SCREEN_HEIGHT // 2
-
-        title = self._title_font.render(self._title, True, WHITE)
-        self.screen.blit(title, title.get_rect(center=(cx, cy - 40)))
-
-        subtitle = self._subtitle_font.render("Press Enter to try again", True, WHITE)
-        self.screen.blit(subtitle, subtitle.get_rect(center=(cx, cy + 40)))
+        text = "Press Enter to start again" if self._is_victory else "Press Enter to try again"
+        subtitle = self._subtitle_font.render(text, True, COLOR_INK_DARK_DARKEST)
+        self.screen.blit(subtitle, subtitle.get_rect(center=(cx, SCREEN_HEIGHT // 2 + 250)))
 
         pygame.display.update()
