@@ -1,5 +1,5 @@
 import pygame
-from pygame.locals import K_w, K_s, K_a, K_d, K_SPACE
+from pygame.locals import K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
 
 from app.settings import (
     WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING,
@@ -49,13 +49,13 @@ class Player(Entity):
 
         pressed_keys = pygame.key.get_pressed()
 
-        if pressed_keys[K_w]:
+        if pressed_keys[K_UP]:
             self.moving_power_y = -MOVING_POWER
-        if pressed_keys[K_s]:
+        if pressed_keys[K_DOWN]:
             self.moving_power_y = MOVING_POWER
-        if pressed_keys[K_a]:
+        if pressed_keys[K_LEFT]:
             self.moving_power_x = -MOVING_POWER
-        if pressed_keys[K_d]:
+        if pressed_keys[K_RIGHT]:
             self.moving_power_x = MOVING_POWER
 
     def _calculate_speed(self, dt):
