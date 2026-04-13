@@ -72,7 +72,7 @@ EXPLOSION_FRAME_COUNT = 9
 EXPLOSION_FPS = 10
 
 # Music
-MUSIC_PATH = "resources/Azure Circuit.mp3"
+MUSIC_PATH = "resources/music/Azure Circuit.mp3"
 MUSIC_VOLUME = 0.1
 MUSIC_FADEOUT_MS = 2000  # плавное затухание при game over (мс)
 

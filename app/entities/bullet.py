@@ -19,7 +19,7 @@ class Bullet(Entity):
 
     @classmethod
     def _load_images(cls):
-        base = pygame.image.load("resources/shell_8x16.png").convert_alpha()
+        base = pygame.image.load("resources/images/bullet/shell_8x16.png").convert_alpha()
         cls._images = {
             'up':    base,
             'down':  pygame.transform.rotate(base, 180),

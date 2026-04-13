@@ -10,7 +10,7 @@ from app.settings import (
 )
 from app.landscape import LANDSCAPES
 
-TITLE_IMAGE_PATH = "resources/Battle Mission.png"
+TITLE_IMAGE_PATH = "resources/images/ui/Battle Mission.png"
 
 _MENU_MAIN = "main"
 _MENU_SETTINGS = "settings"

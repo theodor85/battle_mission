@@ -13,15 +13,15 @@ class HUD:
         self.enemy_tanks = enemy_tanks
         self.hp_display = float(PLAYER_MAX_HP)
         self.tank_icon = pygame.transform.scale(
-            pygame.image.load("resources/tank_up.png").convert_alpha(),
+            pygame.image.load("resources/images/player/tank_up.png").convert_alpha(),
             (50, 50),
         )
         self.turret_icon = pygame.transform.scale(
-            pygame.image.load("resources/turret_enemy_down.png").convert_alpha(),
+            pygame.image.load("resources/images/turret/turret_enemy_down.png").convert_alpha(),
             (50, 50),
         )
         self.enemy_tank_icon = pygame.transform.scale(
-            pygame.image.load("resources/tank_enemy_down.png").convert_alpha(),
+            pygame.image.load("resources/images/enemy_tank/tank_enemy_down.png").convert_alpha(),
             (50, 50),
         )
 

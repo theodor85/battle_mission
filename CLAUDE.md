@@ -28,7 +28,16 @@ app/
     title_scene.py   — TitleScene: main menu
     game_scene.py    — GameScene: gameplay logic, entity management, collisions
     game_over_scene.py — GameOverScene: victory/defeat screen
-resources/           — images, sounds, and other assets
+resources/           — game assets
+  images/
+    player/          — player tank sprites
+    enemy_tank/      — enemy tank sprites + destroyed
+    turret/          — turret sprites + destroyed
+    bullet/          — shell sprite
+    effects/         — explosion spritesheet
+    ui/              — title screen, game over, victory images
+  music/             — background music
+  concepts/          — concept art (not used in code)
 ```
 Only `main.py` lives at the project root. All game code goes inside `app/`.
 

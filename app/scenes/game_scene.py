@@ -44,7 +44,7 @@ class GameScene(Scene):
         self._game_over_timer = 0.0
         self._game_over_title = ""
         self.destroyed_tank_image = pygame.image.load(
-            "resources/tank_destroyed.png"
+            "resources/images/enemy_tank/tank_destroyed.png"
         ).convert_alpha()
         self.hud = HUD(self.player, self.turrets, self.enemy_tanks)
 

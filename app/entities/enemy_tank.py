@@ -14,13 +14,13 @@ from app.entities.bullet import Bullet
 class EnemyTank(Entity):
     def __init__(self, x, y, game_map):
         self.images = {
-            'up': pygame.image.load("resources/tank_enemy_up.png").convert_alpha(),
-            'down': pygame.image.load("resources/tank_enemy_down.png").convert_alpha(),
-            'left': pygame.image.load("resources/tank_enemy_left.png").convert_alpha(),
-            'right': pygame.image.load("resources/tank_enemy_right.png").convert_alpha(),
+            'up': pygame.image.load("resources/images/enemy_tank/tank_enemy_up.png").convert_alpha(),
+            'down': pygame.image.load("resources/images/enemy_tank/tank_enemy_down.png").convert_alpha(),
+            'left': pygame.image.load("resources/images/enemy_tank/tank_enemy_left.png").convert_alpha(),
+            'right': pygame.image.load("resources/images/enemy_tank/tank_enemy_right.png").convert_alpha(),
         }
         self.destroyed_image = pygame.image.load(
-            "resources/tank_destroyed.png"
+            "resources/images/enemy_tank/tank_destroyed.png"
         ).convert_alpha()
         self.direction = 'down'
         self.image = self.images[self.direction]

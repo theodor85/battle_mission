@@ -10,7 +10,7 @@ class Explosion(Entity):
     @classmethod
     def _load_frames(cls):
         sheet = pygame.image.load(
-            "resources/explosion_spritesheet.png"
+            "resources/images/effects/explosion_spritesheet.png"
         ).convert_alpha()
         cls._frames = []
         for i in range(EXPLOSION_FRAME_COUNT):

@@ -13,10 +13,10 @@ class Player(Entity):
     def __init__(self, game_map):
         self.game_map = game_map
         self.images = {
-            'up': pygame.image.load("resources/tank_up.png"),
-            'down': pygame.image.load("resources/tank_down.png"),
-            'left': pygame.image.load("resources/tank_left.png"),
-            'right': pygame.image.load("resources/tank_right.png"),
+            'up': pygame.image.load("resources/images/player/tank_up.png"),
+            'down': pygame.image.load("resources/images/player/tank_down.png"),
+            'left': pygame.image.load("resources/images/player/tank_left.png"),
+            'right': pygame.image.load("resources/images/player/tank_right.png"),
         }
         self.image = self.images['up']
         w = self.image.get_width()
