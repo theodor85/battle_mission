@@ -1,4 +1,4 @@
-# Project: Moving Exp (Pygame)
+# Project: Battle Mission (Pygame)
 
 ## Architecture & Best Practices
 
@@ -10,24 +10,37 @@ app/
   events.py          — EventBus: lightweight synchronous event system
   camera.py          — Camera class (decoupled from entities)
   map.py             — map generation, tile collision helpers, tile drawing
+  landscape.py       — LandscapeProfile dataclass + presets (STEPPE, MOUNTAINS, SWAMP)
+  collision.py       — collision detection functions (posts events via EventBus)
+  hud.py             — HUD class (HP bar, turret counter)
+  game.py            — Game class: thin coordinator, owns game loop and scene management
   entities/          — game entity classes
-    __init__.py      — re-exports Entity, EntityList, Player, Turret, Bullet, Explosion
+    __init__.py      — re-exports Entity, EntityList, Player, Turret, EnemyTank, Bullet, Explosion
     entity.py        — Entity base class + EntityList container
     player.py        — Player
     turret.py        — Turret
+    enemy_tank.py    — EnemyTank
     bullet.py        — Bullet
     explosion.py     — Explosion
-  collision.py       — collision detection functions (posts events via EventBus)
-  hud.py             — HUD class (HP bar, turret counter)
-  game.py            — Game class: thin coordinator, owns game loop and event wiring
+  scenes/            — scene system (state machine)
+    __init__.py      — re-exports Scene, TitleScene, GameScene, GameOverScene
+    scene.py         — Scene ABC: handle_events(), update(dt), draw(), next_scene
+    title_scene.py   — TitleScene: main menu
+    game_scene.py    — GameScene: gameplay logic, entity management, collisions
+    game_over_scene.py — GameOverScene: victory/defeat screen
 resources/           — images, sounds, and other assets
 ```
 Only `main.py` lives at the project root. All game code goes inside `app/`.
 
+### Scene system
+The game uses a scene state machine. `Game` owns the loop and delegates to the active `Scene`.
+Each scene implements `handle_events()`, `update(dt)`, `draw()`. Transition happens by setting `next_scene`.
+Gameplay logic (entities, collisions, HUD) lives in `GameScene`, not in `Game`.
+
 ### Game class pattern
-Wrap the game loop in a `Game` class. It coordinates subsystems (map, camera, HUD, entities, collisions).
-No module-level mutable state or globals — everything lives inside Game or is passed explicitly.
-Collisions post events via EventBus; Game handles them in `_on_*` methods.
+`Game` is a thin coordinator: initializes pygame, runs the main loop, and switches scenes.
+No module-level mutable state or globals — everything lives inside Game/Scene or is passed explicitly.
+Collisions post events via EventBus; `GameScene` handles them in `_on_*` methods.
 
 ### Game loop structure
 The game loop must follow three clear phases:
