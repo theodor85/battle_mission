@@ -6,6 +6,7 @@ from app.entities.entity import Entity
 
 class Explosion(Entity):
     _frames = None
+    _scaled_frames_cache = {}
 
     @classmethod
     def _load_frames(cls):
@@ -20,12 +21,25 @@ class Explosion(Entity):
             )
             cls._frames.append(frame)
 
-    def __init__(self, cx, cy):
+    def __init__(self, cx, cy, scale=1.0):
         if Explosion._frames is None:
             Explosion._load_frames()
-        x = cx - EXPLOSION_FRAME_SIZE / 2
-        y = cy - EXPLOSION_FRAME_SIZE / 2
-        super().__init__(x, y, EXPLOSION_FRAME_SIZE, EXPLOSION_FRAME_SIZE)
+
+        if scale == 1.0:
+            self._my_frames = Explosion._frames
+        else:
+            if scale not in Explosion._scaled_frames_cache:
+                new_size = int(EXPLOSION_FRAME_SIZE * scale)
+                Explosion._scaled_frames_cache[scale] = [
+                    pygame.transform.scale(f, (new_size, new_size))
+                    for f in Explosion._frames
+                ]
+            self._my_frames = Explosion._scaled_frames_cache[scale]
+
+        size = self._my_frames[0].get_width()
+        x = cx - size / 2
+        y = cy - size / 2
+        super().__init__(x, y, size, size)
         self.timer = 0.0
         self.frame_index = 0
 
@@ -38,6 +52,6 @@ class Explosion(Entity):
     def draw(self, surface, camera):
         if self.alive:
             surface.blit(
-                Explosion._frames[self.frame_index],
+                self._my_frames[self.frame_index],
                 camera.apply(self.x, self.y),
             )

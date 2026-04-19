@@ -11,9 +11,14 @@ from app.settings import (
     MOVING_POWER, BULLET_DAMAGE,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
     GAME_OVER_DELAY, DEFAULT_LANDSCAPE, DEFAULT_DIFFICULTY,
+    MISSILE_INTERVAL_MIN, MISSILE_INTERVAL_MAX,
+    MISSILE_AIM_OFFSET_TILES, MISSILE_SAFE_RADIUS_TILES,
+    MISSILE_DAMAGE_TIERS, MISSILE_EXPLOSION_SCALE,
+    CAMERA_SHAKE_DURATION, CAMERA_SHAKE_INTENSITY,
+    WORLD_WIDTH, WORLD_HEIGHT, MISSILE_HEIGHT,
 )
 from app.map import Map
-from app.entities import Player, Turret, EnemyTank, Explosion, EntityList
+from app.entities import Player, Turret, EnemyTank, Explosion, EntityList, Missile
 from app.camera import Camera
 from app.events import EventBus
 from app.collision import check_collisions
@@ -40,6 +45,8 @@ class GameScene(Scene):
         self.player_bullets = EntityList()
         self.enemy_bullets = EntityList()
         self.explosions = EntityList()
+        self.missiles = EntityList()
+        self._missile_timer = random.uniform(MISSILE_INTERVAL_MIN, MISSILE_INTERVAL_MAX)
         self.game_over = False
         self._game_over_timer = 0.0
         self._game_over_title = ""
@@ -177,6 +184,19 @@ class GameScene(Scene):
         for b in self.enemy_bullets:
             b.update(dt)
 
+        # Missile spawner
+        self._missile_timer -= dt
+        if self._missile_timer <= 0:
+            self._missile_timer = random.uniform(MISSILE_INTERVAL_MIN, MISSILE_INTERVAL_MAX)
+            self._spawn_missile()
+
+        for m in self.missiles:
+            m.update(dt)
+        for m in self.missiles:
+            if not m.alive and m.reached_target:
+                self._on_missile_impact(m.target_x, m.target_y)
+        self.missiles.prune()
+
         check_collisions(
             self.player, self.player_bullets, self.enemy_bullets,
             self.turrets, self.enemy_tanks, self.events,
@@ -201,6 +221,8 @@ class GameScene(Scene):
             b.draw(self.screen, self.camera)
         for b in self.enemy_bullets:
             b.draw(self.screen, self.camera)
+        for m in self.missiles:
+            m.draw(self.screen, self.camera)
         self.player.draw(self.screen, self.camera)
         for exp in self.explosions:
             exp.draw(self.screen, self.camera)
@@ -230,3 +252,76 @@ class GameScene(Scene):
 
     def _on_bullet_hit_rock(self, data):
         self.explosions.add(Explosion(data["x"], data["y"]))
+
+    def _spawn_missile(self):
+        player_cx = self.player.x + self.player.width / 2
+        player_cy = self.player.y + self.player.height / 2
+        safe_px = MISSILE_SAFE_RADIUS_TILES * TILE_SIZE
+
+        for t in self.turrets:
+            if t.alive:
+                tcx = t.x + t.width / 2
+                tcy = t.y + t.height / 2
+                if abs(tcx - player_cx) <= safe_px and abs(tcy - player_cy) <= safe_px:
+                    return
+        for t in self.enemy_tanks:
+            if t.alive:
+                tcx = t.x + t.width / 2
+                tcy = t.y + t.height / 2
+                if abs(tcx - player_cx) <= safe_px and abs(tcy - player_cy) <= safe_px:
+                    return
+
+        offset_x = random.randint(-MISSILE_AIM_OFFSET_TILES, MISSILE_AIM_OFFSET_TILES) * TILE_SIZE
+        offset_y = random.randint(-MISSILE_AIM_OFFSET_TILES, MISSILE_AIM_OFFSET_TILES) * TILE_SIZE
+        target_x = max(0.0, min(player_cx + offset_x, float(WORLD_WIDTH)))
+        target_y = max(0.0, min(player_cy + offset_y, float(WORLD_HEIGHT)))
+
+        edge = random.choice(('top', 'bottom', 'left', 'right'))
+        if edge == 'left':
+            self.missiles.add(Missile(-MISSILE_HEIGHT, target_y, target_x, target_y, 'right'))
+        elif edge == 'right':
+            self.missiles.add(Missile(WORLD_WIDTH + MISSILE_HEIGHT, target_y, target_x, target_y, 'left'))
+        elif edge == 'top':
+            self.missiles.add(Missile(target_x, -MISSILE_HEIGHT, target_x, target_y, 'down'))
+        else:
+            self.missiles.add(Missile(target_x, WORLD_HEIGHT + MISSILE_HEIGHT, target_x, target_y, 'up'))
+
+    def _on_missile_impact(self, cx, cy):
+        self.explosions.add(Explosion(cx, cy, scale=MISSILE_EXPLOSION_SCALE))
+        self.camera.start_shake(CAMERA_SHAKE_DURATION, CAMERA_SHAKE_INTENSITY)
+
+        player_cx = self.player.x + self.player.width / 2
+        player_cy = self.player.y + self.player.height / 2
+        dist = ((player_cx - cx) ** 2 + (player_cy - cy) ** 2) ** 0.5
+        ring = int(dist / TILE_SIZE)
+        if ring in MISSILE_DAMAGE_TIERS:
+            self.player.hp -= MISSILE_DAMAGE_TIERS[ring]
+            self.explosions.add(Explosion(player_cx, player_cy))
+            if self.player.hp <= 0:
+                self.player.hp = 0
+                self.player.image = self.destroyed_tank_image
+                self._trigger_game_over("Game Over")
+
+        for turret in self.turrets:
+            if not turret.alive:
+                continue
+            tcx = turret.x + turret.width / 2
+            tcy = turret.y + turret.height / 2
+            dist = ((tcx - cx) ** 2 + (tcy - cy) ** 2) ** 0.5
+            ring = int(dist / TILE_SIZE)
+            if ring in MISSILE_DAMAGE_TIERS:
+                turret.destroy()
+                self.explosions.add(Explosion(tcx, tcy))
+
+        for tank in self.enemy_tanks:
+            if not tank.alive:
+                continue
+            tcx = tank.x + tank.width / 2
+            tcy = tank.y + tank.height / 2
+            dist = ((tcx - cx) ** 2 + (tcy - cy) ** 2) ** 0.5
+            ring = int(dist / TILE_SIZE)
+            if ring in MISSILE_DAMAGE_TIERS:
+                tank.hp -= MISSILE_DAMAGE_TIERS[ring]
+                self.explosions.add(Explosion(tcx, tcy))
+                if tank.hp <= 0:
+                    tank.destroy()
