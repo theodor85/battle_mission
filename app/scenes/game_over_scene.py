@@ -15,12 +15,13 @@ _GAME_OVER_IMAGE_PATH = "resources/images/ui/Game Over.png"
 
 class GameOverScene(Scene):
     def __init__(self, screen, clock, title, background=None,
-                 music_on=True, landscape=None):
+                 music_on=True, landscape=None, difficulty=None):
         super().__init__(screen, clock)
         self._title = title
         self._background = background
         self._music_on = music_on
         self._landscape = landscape
+        self._difficulty = difficulty
         self._subtitle_font = pygame.font.SysFont(None, SUBTITLE_FONT_SIZE)
         self._is_victory = "Victory" in title
 
@@ -39,6 +40,7 @@ class GameOverScene(Scene):
                     self.screen, self.clock,
                     music_on=self._music_on,
                     landscape=self._landscape,
+                    difficulty=self._difficulty,
                 )
 
     def update(self, dt):

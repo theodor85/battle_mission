@@ -3,7 +3,7 @@ from pygame.locals import K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
 
 from app.settings import (
     WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING,
-    SHOOT_COOLDOWN, PLAYER_MAX_HP,
+    PLAYER_SHOOT_COOLDOWN, PLAYER_MAX_HP,
 )
 from app.entities.entity import Entity
 from app.entities.bullet import Bullet
@@ -116,7 +116,7 @@ class Player(Entity):
         self.shoot_timer -= dt
         pressed = pygame.key.get_pressed()
         if pressed[K_SPACE] and self.shoot_timer <= 0:
-            self.shoot_timer = SHOOT_COOLDOWN
+            self.shoot_timer = PLAYER_SHOOT_COOLDOWN
             return Bullet(self.x, self.y, self.direction,
                           self.width, self.height, self.game_map)
         return None

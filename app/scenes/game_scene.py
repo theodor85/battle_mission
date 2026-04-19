@@ -8,10 +8,9 @@ from app.scenes.scene import Scene
 from app.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND,
-    NUMBER_OF_TURRETS, NUMBER_OF_ENEMY_TANKS,
-    BULLET_DAMAGE,
+    MOVING_POWER, BULLET_DAMAGE,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
-    GAME_OVER_DELAY, DEFAULT_LANDSCAPE,
+    GAME_OVER_DELAY, DEFAULT_LANDSCAPE, DEFAULT_DIFFICULTY,
 )
 from app.map import Map
 from app.entities import Player, Turret, EnemyTank, Explosion, EntityList
@@ -22,10 +21,11 @@ from app.hud import HUD
 
 
 class GameScene(Scene):
-    def __init__(self, screen, clock, music_on=True, landscape=None):
+    def __init__(self, screen, clock, music_on=True, landscape=None, difficulty=None):
         super().__init__(screen, clock)
         self._music_on = music_on
         self._landscape = landscape or DEFAULT_LANDSCAPE
+        self._difficulty = difficulty or DEFAULT_DIFFICULTY
 
         pygame.mixer.music.load(MUSIC_PATH)
         pygame.mixer.music.set_volume(MUSIC_VOLUME if music_on else 0)
@@ -76,8 +76,10 @@ class GameScene(Scene):
                         and abs(c - center_c) <= clear_radius):
                     continue
                 candidates.append((r, c))
-        chosen = random.sample(candidates, min(NUMBER_OF_TURRETS, len(candidates)))
-        return [Turret(c * TILE_SIZE, r * TILE_SIZE, self.map) for r, c in chosen]
+        count = self._difficulty.number_of_turrets
+        cooldown = self._difficulty.turret_shoot_cooldown
+        chosen = random.sample(candidates, min(count, len(candidates)))
+        return [Turret(c * TILE_SIZE, r * TILE_SIZE, self.map, cooldown) for r, c in chosen]
 
     def _spawn_enemy_tanks(self):
         center_r = MAP_ROWS // 2
@@ -96,9 +98,11 @@ class GameScene(Scene):
                 if (r, c) in turret_positions:
                     continue
                 candidates.append((r, c))
-        chosen = random.sample(candidates,
-                               min(NUMBER_OF_ENEMY_TANKS, len(candidates)))
-        return [EnemyTank(c * TILE_SIZE, r * TILE_SIZE, self.map)
+        count = self._difficulty.number_of_enemy_tanks
+        tank_power = MOVING_POWER * self._difficulty.enemy_tank_speed_factor
+        tank_cooldown = self._difficulty.enemy_tank_shoot_cooldown
+        chosen = random.sample(candidates, min(count, len(candidates)))
+        return [EnemyTank(c * TILE_SIZE, r * TILE_SIZE, self.map, tank_power, tank_cooldown)
                 for r, c in chosen]
 
     def _trigger_game_over(self, title):
@@ -131,6 +135,7 @@ class GameScene(Scene):
                     background=self.screen.copy(),
                     music_on=self._music_on,
                     landscape=self._landscape,
+                    difficulty=self._difficulty,
                 )
             return
 

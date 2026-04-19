@@ -37,6 +37,9 @@ TILE_COLORS = {
 # Terrain generation — see app/landscape.py for profiles
 from app.landscape import STEPPE as DEFAULT_LANDSCAPE
 
+# Difficulty — see app/difficulty.py for profiles
+from app.difficulty import EASY as DEFAULT_DIFFICULTY
+
 # Physics
 MASS = 15.0
 MOVING_POWER = 10.0
@@ -51,16 +54,10 @@ BULLET_SPEED = 400.0        # пикселей в секунду
 BULLET_WIDTH = 8             # ширина снаряда (поперёк направления)
 BULLET_HEIGHT = 16           # длина снаряда (вдоль направления)
 BULLET_COLOR = (255, 255, 0) # жёлтый
-SHOOT_COOLDOWN = 1.0         # секунд между выстрелами (1 раз в секунду)
-
-# Turrets
-NUMBER_OF_TURRETS = 5
-TURRET_SHOOT_COOLDOWN = 2.0  # секунд между выстрелами туррели
+PLAYER_SHOOT_COOLDOWN = 1.0  # секунд между выстрелами игрока
 
 # Enemy tanks
-NUMBER_OF_ENEMY_TANKS = 2
-ENEMY_TANK_HP = 120                         # 3 × BULLET_DAMAGE
-ENEMY_TANK_MOVING_POWER = MOVING_POWER * 0.7  # 70% скорости игрока
+ENEMY_TANK_HP = 120  # 3 × BULLET_DAMAGE
 
 # Player HP
 PLAYER_MAX_HP = 100

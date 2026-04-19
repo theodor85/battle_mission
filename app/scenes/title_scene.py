@@ -9,6 +9,7 @@ from app.settings import (
     SUBTITLE_FONT_SIZE, COLOR_INK_DARK_DARKEST, MUSIC_VOLUME,
 )
 from app.landscape import LANDSCAPES
+from app.difficulty import DIFFICULTIES
 
 TITLE_IMAGE_PATH = "resources/images/ui/Battle Mission.png"
 
@@ -28,6 +29,7 @@ class TitleScene(Scene):
 
         self._music_on = True
         self._landscape_idx = 0
+        self._difficulty_idx = 0
 
     # ── Main menu ──────────────────────────────────────────────
 
@@ -37,9 +39,11 @@ class TitleScene(Scene):
     def _settings_items(self):
         music_val = "On" if self._music_on else "Off"
         land_val = LANDSCAPES[self._landscape_idx].name
+        diff_val = DIFFICULTIES[self._difficulty_idx].name
         return [
             f"Music          {music_val}",
             f"Landscape      {land_val}",
+            f"Difficulty     {diff_val}",
         ]
 
     # ── Events ─────────────────────────────────────────────────
@@ -83,10 +87,12 @@ class TitleScene(Scene):
         if idx == 0:  # Start
             from app.scenes.game_scene import GameScene
             landscape = LANDSCAPES[self._landscape_idx]
+            difficulty = DIFFICULTIES[self._difficulty_idx]
             self.next_scene = GameScene(
                 self.screen, self.clock,
                 music_on=self._music_on,
                 landscape=landscape,
+                difficulty=difficulty,
             )
         elif idx == 1:  # Settings
             self._menu_state = _MENU_SETTINGS
@@ -101,6 +107,8 @@ class TitleScene(Scene):
             pygame.mixer.music.set_volume(MUSIC_VOLUME if self._music_on else 0)
         elif idx == 1:  # Landscape
             self._landscape_idx = (self._landscape_idx + 1) % len(LANDSCAPES)
+        elif idx == 2:  # Difficulty
+            self._difficulty_idx = (self._difficulty_idx + 1) % len(DIFFICULTIES)
 
     # ── Update / Draw ──────────────────────────────────────────
 

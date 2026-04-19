@@ -2,13 +2,12 @@ import random
 
 import pygame
 
-from app.settings import TURRET_SHOOT_COOLDOWN
 from app.entities.entity import Entity
 from app.entities.bullet import Bullet
 
 
 class Turret(Entity):
-    def __init__(self, x, y, game_map):
+    def __init__(self, x, y, game_map, shoot_cooldown):
         self.images = {
             'up': pygame.image.load("resources/images/turret/turret_enemy_up.png").convert_alpha(),
             'down': pygame.image.load("resources/images/turret/turret_enemy_down.png").convert_alpha(),
@@ -24,7 +23,8 @@ class Turret(Entity):
         super().__init__(x, y, w, h)
 
         self.game_map = game_map
-        self.shoot_timer = random.uniform(0, TURRET_SHOOT_COOLDOWN)
+        self._shoot_cooldown = shoot_cooldown
+        self.shoot_timer = random.uniform(0, shoot_cooldown)
         self.target_pos = (x, y)
 
     def update(self, dt):
@@ -45,7 +45,7 @@ class Turret(Entity):
 
         self.shoot_timer -= dt
         if self.shoot_timer <= 0:
-            self.shoot_timer = TURRET_SHOOT_COOLDOWN
+            self.shoot_timer = self._shoot_cooldown
             return Bullet(self.x, self.y, self.direction, self.width, self.height, self.game_map)
         return None
 
