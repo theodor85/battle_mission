@@ -1,29 +1,43 @@
 import pygame
 
-from app.settings import MISSILE_SPEED, MISSILE_WIDTH, MISSILE_HEIGHT, MISSILE_COLOR
+from app.settings import MISSILE_SPEED
 from app.entities.entity import Entity
+
+_IMAGES = {
+    'up':    'resources/images/missile/rocket_enemy_up.png',
+    'down':  'resources/images/missile/rocket_enemy_down.png',
+    'left':  'resources/images/missile/rocket_enemy_left.png',
+    'right': 'resources/images/missile/rocket_enemy_right.png',
+}
+
+_DIRECTION_VECTORS = {
+    'up':    (0, -1),
+    'down':  (0,  1),
+    'left':  (-1, 0),
+    'right': ( 1, 0),
+}
+
+_loaded = {}
+
+
+def _get_image(direction):
+    if direction not in _loaded:
+        _loaded[direction] = pygame.image.load(_IMAGES[direction]).convert_alpha()
+    return _loaded[direction]
 
 
 class Missile(Entity):
-    _DIRECTION_VECTORS = {
-        'up':    (0, -1),
-        'down':  (0,  1),
-        'left':  (-1, 0),
-        'right': ( 1, 0),
-    }
-
     def __init__(self, start_x, start_y, target_x, target_y, direction):
-        if direction in ('left', 'right'):
-            w, h = MISSILE_HEIGHT, MISSILE_WIDTH
-        else:
-            w, h = MISSILE_WIDTH, MISSILE_HEIGHT
+        self._image = _get_image(direction)
+        w = self._image.get_width()
+        h = self._image.get_height()
         super().__init__(start_x, start_y, w, h)
         self.target_x = target_x
         self.target_y = target_y
         self.direction = direction
         self.reached_target = False
 
-        dx, dy = self._DIRECTION_VECTORS[direction]
+        dx, dy = _DIRECTION_VECTORS[direction]
         self.vx = dx * MISSILE_SPEED
         self.vy = dy * MISSILE_SPEED
 
@@ -45,5 +59,4 @@ class Missile(Entity):
         self.alive = False
 
     def draw(self, surface, camera):
-        sx, sy = camera.apply(self.x, self.y)
-        pygame.draw.rect(surface, MISSILE_COLOR, (sx, sy, self.width, self.height))
+        surface.blit(self._image, camera.apply(self.x, self.y))

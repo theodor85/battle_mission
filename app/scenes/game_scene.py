@@ -15,7 +15,7 @@ from app.settings import (
     MISSILE_AIM_OFFSET_TILES, MISSILE_SAFE_RADIUS_TILES,
     MISSILE_DAMAGE_TIERS, MISSILE_EXPLOSION_SCALE,
     CAMERA_SHAKE_DURATION, CAMERA_SHAKE_INTENSITY,
-    WORLD_WIDTH, WORLD_HEIGHT, MISSILE_HEIGHT,
+    WORLD_WIDTH, WORLD_HEIGHT,
 )
 from app.map import Map
 from app.entities import Player, Turret, EnemyTank, Explosion, EntityList, Missile
@@ -278,13 +278,13 @@ class GameScene(Scene):
 
         edge = random.choice(('top', 'bottom', 'left', 'right'))
         if edge == 'left':
-            self.missiles.add(Missile(-MISSILE_HEIGHT, target_y, target_x, target_y, 'right'))
+            self.missiles.add(Missile(-TILE_SIZE, target_y, target_x, target_y, 'right'))
         elif edge == 'right':
-            self.missiles.add(Missile(WORLD_WIDTH + MISSILE_HEIGHT, target_y, target_x, target_y, 'left'))
+            self.missiles.add(Missile(WORLD_WIDTH + TILE_SIZE, target_y, target_x, target_y, 'left'))
         elif edge == 'top':
-            self.missiles.add(Missile(target_x, -MISSILE_HEIGHT, target_x, target_y, 'down'))
+            self.missiles.add(Missile(target_x, -TILE_SIZE, target_x, target_y, 'down'))
         else:
-            self.missiles.add(Missile(target_x, WORLD_HEIGHT + MISSILE_HEIGHT, target_x, target_y, 'up'))
+            self.missiles.add(Missile(target_x, WORLD_HEIGHT + TILE_SIZE, target_x, target_y, 'up'))
 
     def _on_missile_impact(self, cx, cy):
         self.explosions.add(Explosion(cx, cy, scale=MISSILE_EXPLOSION_SCALE))
