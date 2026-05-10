@@ -12,16 +12,20 @@ app/
   map.py             — map generation, tile collision helpers, tile drawing
   landscape.py       — LandscapeProfile dataclass + presets (STEPPE, MOUNTAINS, SWAMP)
   collision.py       — collision detection functions (posts events via EventBus)
-  hud.py             — HUD class (HP bar, turret counter)
+  hud.py             — HUD class (HP bar, turret/tank/mining-vehicle counters)
   game.py            — Game class: thin coordinator, owns game loop and scene management
   entities/          — game entity classes
-    __init__.py      — re-exports Entity, EntityList, Player, Turret, EnemyTank, Bullet, Explosion
+    __init__.py      — re-exports all entity classes
     entity.py        — Entity base class + EntityList container
     player.py        — Player
     turret.py        — Turret
     enemy_tank.py    — EnemyTank
     bullet.py        — Bullet
     explosion.py     — Explosion
+    missile.py       — Missile (spawns from map edge, flies toward player)
+    helicopter.py    — Helicopter (delivers/evacuates mining vehicle)
+    mining_vehicle.py — MiningVehicle (fires mining rockets, waits for evac)
+    mining_rocket.py — MiningRocket (flies to tile, creates mine on landing)
   scenes/            — scene system (state machine)
     __init__.py      — re-exports Scene, TitleScene, GameScene, GameOverScene
     scene.py         — Scene ABC: handle_events(), update(dt), draw(), next_scene
@@ -67,9 +71,24 @@ This makes the game frame-rate independent.
 dt = clock.tick(FPS) / 1000.0
 ```
 
+### Mining system
+`GameScene` owns the full mining lifecycle:
+- `self.mining_vehicles` — plain list of 2 `MiningVehicle` instances (never pruned; state tracks lifecycle)
+- `self.helicopters` — `EntityList` of active helicopters (delivery and pickup)
+- `self.mining_rockets` — `EntityList` of in-flight mining rockets
+- `self.mines` — `set` of `(col, row)` tile coordinates with placed mines
+
+`MiningVehicle` states: `INACTIVE → SHOOTING → MOVING_AWAY → WAITING_FOR_PICKUP → INACTIVE` (cycle) or `DESTROYED` (permanent).
+`Helicopter` states: `FLYING_IN → HOVERING → FLYING_OUT`. Mode passed via `on_hover_complete` callback.
+
+Delivery helicopter spawns from the edge **farthest** from the player; pickup helicopter spawns from the edge **closest** to the vehicle, aligned on the same vertical or horizontal.
+
+Mines block only `GROUND` tiles. Player driving over a mine loses `MINE_DAMAGE` HP; mine disappears. Mining vehicles are destroyable by player bullets but do not count toward the victory condition.
+
 ### General rules
 - Keep imports explicit — avoid `from module import *`
 - Resources (images, sounds) are loaded in `__init__` methods or a dedicated loading phase, not at module level
 - All entities inherit from `Entity` base class with uniform `update(dt)`, `draw(surface, camera)`, `get_rect()`
 - Dependencies (game_map, target) are injected via constructor, not passed through `update()`
 - Constants go in `settings.py`, not scattered across files
+- `MiningVehicle` uses a plain list (not `EntityList`) because all 2 instances must persist for HUD display even after destruction

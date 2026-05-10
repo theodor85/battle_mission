@@ -1,3 +1,4 @@
+import math
 import random
 import sys
 
@@ -6,7 +7,7 @@ from pygame.locals import QUIT
 
 from app.scenes.scene import Scene
 from app.settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK,
+    SCREEN_WIDTH, SCREEN_HEIGHT, BLACK,
     MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND,
     MOVING_POWER, BULLET_DAMAGE,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
@@ -16,9 +17,16 @@ from app.settings import (
     MISSILE_DAMAGE_TIERS, MISSILE_EXPLOSION_SCALE,
     CAMERA_SHAKE_DURATION, CAMERA_SHAKE_INTENSITY,
     WORLD_WIDTH, WORLD_HEIGHT,
+    MINING_VEHICLE_INITIAL_COOLDOWN_1, MINING_VEHICLE_INITIAL_COOLDOWN_2,
+    MINING_VEHICLE_REDELIVERY_COOLDOWN, MINING_ROCKET_SHOOT_COOLDOWN,
+    HELICOPTER_DROP_MIN_DIST_TILES, HELICOPTER_WIDTH, HELICOPTER_HEIGHT,
+    MINE_DAMAGE,
 )
 from app.map import Map
-from app.entities import Player, Turret, EnemyTank, Explosion, EntityList, Missile
+from app.entities import (
+    Player, Turret, EnemyTank, Explosion, EntityList, Missile,
+    Helicopter, MiningVehicle,
+)
 from app.camera import Camera
 from app.events import EventBus
 from app.collision import check_collisions
@@ -53,13 +61,30 @@ class GameScene(Scene):
         self.destroyed_tank_image = pygame.image.load(
             "resources/images/enemy_tank/tank_destroyed.png"
         ).convert_alpha()
-        self.hud = HUD(self.player, self.turrets, self.enemy_tanks)
+
+        # Mining system
+        self.mining_vehicles = [MiningVehicle(self.map), MiningVehicle(self.map)]
+        self.mining_vehicles[0].delivery_cooldown = MINING_VEHICLE_INITIAL_COOLDOWN_1
+        self.mining_vehicles[1].delivery_cooldown = MINING_VEHICLE_INITIAL_COOLDOWN_2
+        self.helicopters = EntityList()
+        self.mining_rockets = EntityList()
+        self.mines = {}  # (col, row) -> sprite index
+        self._mine_sprites = [
+            pygame.transform.scale(
+                pygame.image.load(f"resources/images/mines/mine_tile_{i}.png").convert_alpha(),
+                (TILE_SIZE, TILE_SIZE),
+            )
+            for i in range(2)
+        ]
+
+        self.hud = HUD(self.player, self.turrets, self.enemy_tanks, self.mining_vehicles)
 
         self.events = EventBus()
         self.events.listen("turret_destroyed", self._on_turret_destroyed)
         self.events.listen("player_hit", self._on_player_hit)
         self.events.listen("bullet_hit_rock", self._on_bullet_hit_rock)
         self.events.listen("enemy_tank_hit", self._on_enemy_tank_hit)
+        self.events.listen("mining_vehicle_hit", self._on_mining_vehicle_hit)
 
     def _place_player_on_ground(self):
         for dr in range(MAP_ROWS // 2):
@@ -197,9 +222,16 @@ class GameScene(Scene):
                 self._on_missile_impact(m.target_x, m.target_y)
         self.missiles.prune()
 
+        # Mining system
+        self._update_mining_system(dt, player_center)
+        self._update_helicopters(dt)
+        self._update_mining_rockets(dt)
+        self._check_mine_collision()
+
         check_collisions(
             self.player, self.player_bullets, self.enemy_bullets,
             self.turrets, self.enemy_tanks, self.events,
+            mining_vehicles=self.mining_vehicles,
         )
 
         self.player_bullets.prune()
@@ -213,10 +245,20 @@ class GameScene(Scene):
     def draw(self):
         self.screen.fill(BLACK)
         self.map.draw(self.screen, self.camera)
+
+        # Draw mines before entities
+        self._draw_mines()
+
         for turret in self.turrets:
             turret.draw(self.screen, self.camera)
         for tank in self.enemy_tanks:
             tank.draw(self.screen, self.camera)
+        for vehicle in self.mining_vehicles:
+            vehicle.draw(self.screen, self.camera)
+        for rocket in self.mining_rockets:
+            rocket.draw(self.screen, self.camera)
+        for h in self.helicopters:
+            h.draw(self.screen, self.camera)
         for b in self.player_bullets:
             b.draw(self.screen, self.camera)
         for b in self.enemy_bullets:
@@ -228,6 +270,12 @@ class GameScene(Scene):
             exp.draw(self.screen, self.camera)
         self.hud.draw(self.screen)
         pygame.display.update()
+
+    def _draw_mines(self):
+        for (col, row), sprite_idx in self.mines.items():
+            sx, sy = self.camera.apply(col * TILE_SIZE, row * TILE_SIZE)
+            if -TILE_SIZE <= sx <= SCREEN_WIDTH and -TILE_SIZE <= sy <= SCREEN_HEIGHT:
+                self.screen.blit(self._mine_sprites[sprite_idx], (sx, sy))
 
     # ── Event handlers ──────────────────────────────────────────
 
@@ -252,6 +300,15 @@ class GameScene(Scene):
 
     def _on_bullet_hit_rock(self, data):
         self.explosions.add(Explosion(data["x"], data["y"]))
+
+    def _on_mining_vehicle_hit(self, data):
+        vehicle = data["vehicle"]
+        vehicle.hp -= BULLET_DAMAGE
+        self.explosions.add(Explosion(data["x"], data["y"]))
+        if vehicle.hp <= 0:
+            vehicle.destroyed_permanently = True
+            vehicle.state = MiningVehicle.DESTROYED
+            self.explosions.add(Explosion(data["x"], data["y"]))
 
     def _spawn_missile(self):
         player_cx = self.player.x + self.player.width / 2
@@ -325,3 +382,163 @@ class GameScene(Scene):
                 self.explosions.add(Explosion(tcx, tcy))
                 if tank.hp <= 0:
                     tank.destroy()
+
+    # ── Mining system ────────────────────────────────────────────
+
+    def _update_mining_system(self, dt, player_center):
+        player_cx, player_cy = player_center
+
+        for vehicle in self.mining_vehicles:
+            if vehicle.destroyed_permanently:
+                continue
+
+            if vehicle.state == MiningVehicle.INACTIVE:
+                vehicle.delivery_cooldown -= dt
+                if vehicle.delivery_cooldown <= 0 and not self._has_helicopter_for(vehicle):
+                    self._spawn_delivery_helicopter(vehicle)
+
+            elif vehicle.state == MiningVehicle.SHOOTING:
+                vehicle.update(dt, player_cx, player_cy)  # keep facing player
+                vehicle.shoot_timer -= dt
+                if vehicle.shoot_timer <= 0 and vehicle.rockets_left > 0:
+                    vehicle.shoot_timer = MINING_ROCKET_SHOOT_COOLDOWN
+                    rocket = vehicle.create_rocket(player_cx, player_cy)
+                    self.mining_rockets.add(rocket)
+                    vehicle.rockets_left -= 1
+                    if vehicle.rockets_left == 0:
+                        vehicle.state = MiningVehicle.MOVING_AWAY
+
+            elif vehicle.state == MiningVehicle.MOVING_AWAY:
+                vehicle.update(dt, player_cx, player_cy)
+
+            elif vehicle.state == MiningVehicle.WAITING_FOR_PICKUP:
+                vehicle.pickup_timer -= dt
+                if vehicle.pickup_timer <= 0 and not self._has_helicopter_for(vehicle):
+                    self._spawn_pickup_helicopter(vehicle)
+
+    def _update_helicopters(self, dt):
+        for h in self.helicopters:
+            h.update(dt, self.camera)
+        self.helicopters.prune()
+
+    def _update_mining_rockets(self, dt):
+        for rocket in self.mining_rockets:
+            rocket.update(dt)
+        for rocket in self.mining_rockets:
+            if not rocket.alive and rocket.reached_target:
+                self._on_mining_rocket_landed(rocket.target_col, rocket.target_row,
+                                              rocket.target_x, rocket.target_y)
+        self.mining_rockets.prune()
+
+    def _on_mining_rocket_landed(self, col, row, world_x, world_y):
+        self.explosions.add(Explosion(world_x, world_y))
+        if self.map.tiles[row][col] == GROUND:
+            self.mines[(col, row)] = random.randrange(len(self._mine_sprites))
+
+    def _check_mine_collision(self):
+        if not self.mines:
+            return
+        player_rect = self.player.get_rect()
+        blast_radius = TILE_SIZE/2 * math.sqrt(2)
+        triggered = []
+        for (col, row) in self.mines:
+            cx = col * TILE_SIZE + TILE_SIZE // 2
+            cy = row * TILE_SIZE + TILE_SIZE // 2
+            nearest_x = max(player_rect.left, min(cx, player_rect.right))
+            nearest_y = max(player_rect.top, min(cy, player_rect.bottom))
+            dx = cx - nearest_x
+            dy = cy - nearest_y
+            if dx * dx + dy * dy <= blast_radius * blast_radius:
+                triggered.append((col, row))
+        for key in triggered:
+            del self.mines[key]
+            cx = key[0] * TILE_SIZE + TILE_SIZE // 2
+            cy = key[1] * TILE_SIZE + TILE_SIZE // 2
+            self.events.post("player_hit",
+                             damage=MINE_DAMAGE,
+                             x=float(cx),
+                             y=float(cy))
+
+    def _has_helicopter_for(self, vehicle):
+        return any(h.vehicle is vehicle and h.alive for h in self.helicopters)
+
+    def _find_drop_tile(self, player_cx, player_cy):
+        player_col = int(player_cx // TILE_SIZE)
+        player_row = int(player_cy // TILE_SIZE)
+        min_dist = HELICOPTER_DROP_MIN_DIST_TILES
+        candidates = [
+            (c, r)
+            for r in range(MAP_ROWS)
+            for c in range(MAP_COLS)
+            if (self.map.tiles[r][c] == GROUND
+                and abs(r - player_row) + abs(c - player_col) >= min_dist)
+        ]
+        if not candidates:
+            candidates = [(c, r)
+                          for r in range(MAP_ROWS)
+                          for c in range(MAP_COLS)
+                          if self.map.tiles[r][c] == GROUND]
+        col, row = random.choice(candidates)
+        return (col * TILE_SIZE + TILE_SIZE // 2,
+                row * TILE_SIZE + TILE_SIZE // 2)
+
+    def _farthest_edge(self, player_cx, player_cy):
+        options = [
+            ('left', player_cx),
+            ('right', WORLD_WIDTH - player_cx),
+            ('top', player_cy),
+            ('bottom', WORLD_HEIGHT - player_cy),
+        ]
+        return max(options, key=lambda x: x[1])[0]
+
+    def _spawn_delivery_helicopter(self, vehicle):
+        player_cx = self.player.x + self.player.width / 2
+        player_cy = self.player.y + self.player.height / 2
+        drop_x, drop_y = self._find_drop_tile(player_cx, player_cy)
+        edge = self._farthest_edge(player_cx, player_cy)
+
+        hw = HELICOPTER_WIDTH / 2
+        hh = HELICOPTER_HEIGHT / 2
+        if edge == 'left':
+            spawn_x, spawn_y = -hw, drop_y
+            direction = 'right'
+        elif edge == 'right':
+            spawn_x, spawn_y = WORLD_WIDTH + hw, drop_y
+            direction = 'left'
+        elif edge == 'top':
+            spawn_x, spawn_y = drop_x, -hh
+            direction = 'down'
+        else:
+            spawn_x, spawn_y = drop_x, WORLD_HEIGHT + hh
+            direction = 'up'
+
+        def on_delivery():
+            vehicle.place(drop_x, drop_y)
+
+        h = Helicopter(spawn_x, spawn_y, drop_x, drop_y, direction,
+                       vehicle=vehicle, on_hover_complete=on_delivery)
+        self.helicopters.add(h)
+
+    def _spawn_pickup_helicopter(self, vehicle):
+        vcx = vehicle.x + vehicle.width / 2
+        vcy = vehicle.y + vehicle.height / 2
+
+        hw = HELICOPTER_WIDTH / 2
+        hh = HELICOPTER_HEIGHT / 2
+        options = [
+            ('left', vcx, -hw, vcy, 'right'),
+            ('right', WORLD_WIDTH - vcx, WORLD_WIDTH + hw, vcy, 'left'),
+            ('top', vcy, vcx, -hh, 'down'),
+            ('bottom', WORLD_HEIGHT - vcy, vcx, WORLD_HEIGHT + hh, 'up'),
+        ]
+        _, _, spawn_x, spawn_y, direction = min(options, key=lambda o: o[1])
+
+        def on_pickup():
+            if vehicle.destroyed_permanently:
+                return
+            vehicle.state = MiningVehicle.INACTIVE
+            vehicle.delivery_cooldown = MINING_VEHICLE_REDELIVERY_COOLDOWN
+
+        h = Helicopter(spawn_x, spawn_y, vcx, vcy, direction,
+                       vehicle=vehicle, on_hover_complete=on_pickup)
+        self.helicopters.add(h)
