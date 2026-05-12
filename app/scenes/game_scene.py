@@ -173,6 +173,8 @@ class GameScene(Scene):
 
         self.player.blockers = [t.get_rect() for t in self.enemy_tanks
                                 if t.alive]
+        self.player.blockers += [v.get_rect() for v in self.mining_vehicles
+                                  if v.on_map and not v.destroyed_permanently]
         self.player.update(dt)
         self.camera.update(self.player.x, self.player.y,
                            self.player.speed_x, self.player.speed_y, dt)

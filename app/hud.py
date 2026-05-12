@@ -5,10 +5,6 @@ from app.settings import (
     DARK_GREEN, DARK_GRAY, ORANGE, RED,
 )
 
-_MV_COLOR_ACTIVE = (200, 110, 30)
-_MV_COLOR_INACTIVE = (110, 110, 110)
-_MV_COLOR_DESTROYED = (45, 45, 45)
-
 
 class HUD:
     def __init__(self, player, turrets, enemy_tanks, mining_vehicles=None):
@@ -29,6 +25,12 @@ class HUD:
             pygame.image.load("resources/images/enemy_tank/tank_enemy_down.png").convert_alpha(),
             (50, 50),
         )
+        self.mv_icon_active = pygame.image.load(
+            "resources/images/mining_vehicle/mining_vehicle_hud.png"
+        ).convert_alpha()
+        self.mv_icon_inactive = pygame.image.load(
+            "resources/images/mining_vehicle/mining_vehicle_hud_unavailable.png"
+        ).convert_alpha()
 
     def update(self, dt):
         hp_bar_speed = 120.0
@@ -98,25 +100,13 @@ class HUD:
             return
         margin = 10
         row_y = margin + 50 + 5 + 50 + 8
-        icon_size = 46
         gap = 12
-        for i, vehicle in enumerate(self.mining_vehicles):
-            x = SCREEN_WIDTH - margin - icon_size - i * (icon_size + gap)
-            y = row_y
+        slot = 0
+        for vehicle in self.mining_vehicles:
             if vehicle.destroyed_permanently:
-                color = _MV_COLOR_DESTROYED
-            elif vehicle.on_map:
-                color = _MV_COLOR_ACTIVE
-            else:
-                color = _MV_COLOR_INACTIVE
-            pygame.draw.rect(surface, color, (x, y, icon_size, icon_size))
-            # Simple vehicle silhouette inside icon
-            inner = (x + 4, y + icon_size // 2 - 7, icon_size - 8, 14)
-            lighter = tuple(min(255, c + 40) for c in color)
-            pygame.draw.rect(surface, lighter, inner)
-            if vehicle.destroyed_permanently:
-                # Draw X
-                pygame.draw.line(surface, (180, 50, 50),
-                                 (x + 6, y + 6), (x + icon_size - 6, y + icon_size - 6), 3)
-                pygame.draw.line(surface, (180, 50, 50),
-                                 (x + icon_size - 6, y + 6), (x + 6, y + icon_size - 6), 3)
+                continue
+            icon = self.mv_icon_active if vehicle.on_map else self.mv_icon_inactive
+            w, h = icon.get_size()
+            x = SCREEN_WIDTH - margin - w - slot * (w + gap)
+            surface.blit(icon, (x, row_y))
+            slot += 1
