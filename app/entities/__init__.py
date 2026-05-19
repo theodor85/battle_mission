@@ -8,3 +8,4 @@ from app.entities.missile import Missile
 from app.entities.helicopter import Helicopter
 from app.entities.mining_vehicle import MiningVehicle
 from app.entities.mining_rocket import MiningRocket
+from app.entities.building import Building

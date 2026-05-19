@@ -2,7 +2,7 @@ import pygame
 from pygame.locals import K_UP, K_DOWN, K_LEFT, K_RIGHT, K_SPACE
 
 from app.settings import (
-    WORLD_WIDTH, WORLD_HEIGHT, MASS, MOVING_POWER, DAMPING,
+    MASS, MOVING_POWER, DAMPING,
     PLAYER_SHOOT_COOLDOWN, PLAYER_MAX_HP,
 )
 from app.entities.entity import Entity
@@ -23,7 +23,8 @@ class Player(Entity):
         w = self.image.get_width()
         h = self.image.get_height()
 
-        super().__init__(float(WORLD_WIDTH // 2), float(WORLD_HEIGHT // 2), w, h)
+        super().__init__(float(game_map.world_width // 2),
+                         float(game_map.world_height // 2), w, h)
 
         self.speed_x = 0.0
         self.speed_y = 0.0
@@ -86,20 +87,22 @@ class Player(Entity):
             self.speed_y = 0.0
 
     def _keep_on_map(self):
+        ww = self.game_map.world_width
+        wh = self.game_map.world_height
         if self.x < 0:
             self.x = 0.0
             if self.speed_x < 0:
                 self.speed_x = 0.0
-        if self.x + self.width > WORLD_WIDTH:
-            self.x = float(WORLD_WIDTH - self.width)
+        if self.x + self.width > ww:
+            self.x = float(ww - self.width)
             if self.speed_x > 0:
                 self.speed_x = 0.0
         if self.y < 0:
             self.y = 0.0
             if self.speed_y < 0:
                 self.speed_y = 0.0
-        if self.y + self.height > WORLD_HEIGHT:
-            self.y = float(WORLD_HEIGHT - self.height)
+        if self.y + self.height > wh:
+            self.y = float(wh - self.height)
             if self.speed_y > 0:
                 self.speed_y = 0.0
 

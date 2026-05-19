@@ -35,13 +35,22 @@ class GameOverScene(Scene):
                 pygame.quit()
                 sys.exit()
             if event.type == KEYDOWN and event.key == K_RETURN:
-                from app.scenes.game_scene import GameScene
-                self.next_scene = GameScene(
-                    self.screen, self.clock,
-                    music_on=self._music_on,
-                    landscape=self._landscape,
-                    difficulty=self._difficulty,
-                )
+                if self._is_victory:
+                    from app.scenes.base_scene import BaseScene
+                    self.next_scene = BaseScene(
+                        self.screen, self.clock,
+                        music_on=self._music_on,
+                        landscape=self._landscape,
+                        difficulty=self._difficulty,
+                    )
+                else:
+                    from app.scenes.game_scene import GameScene
+                    self.next_scene = GameScene(
+                        self.screen, self.clock,
+                        music_on=self._music_on,
+                        landscape=self._landscape,
+                        difficulty=self._difficulty,
+                    )
 
     def update(self, dt):
         pass

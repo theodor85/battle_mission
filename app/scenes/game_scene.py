@@ -34,7 +34,8 @@ from app.hud import HUD
 
 
 class GameScene(Scene):
-    def __init__(self, screen, clock, music_on=True, landscape=None, difficulty=None):
+    def __init__(self, screen, clock, music_on=True, landscape=None, difficulty=None,
+                 player_hp=None):
         super().__init__(screen, clock)
         self._music_on = music_on
         self._landscape = landscape or DEFAULT_LANDSCAPE
@@ -46,9 +47,12 @@ class GameScene(Scene):
         pygame.mixer.music.play(loops=-1)
 
         self.map = Map(profile=self._landscape)
-        self.camera = Camera()
+        self.camera = Camera(world_width=self.map.world_width,
+                             world_height=self.map.world_height)
         self.player = Player(self.map)
         self._place_player_on_ground()
+        if player_hp is not None:
+            self.player.hp = player_hp
         self.turrets = self._spawn_turrets()
         self.enemy_tanks = self._spawn_enemy_tanks()
         self.player_bullets = EntityList()
