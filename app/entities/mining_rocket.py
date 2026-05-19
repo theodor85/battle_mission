@@ -8,12 +8,17 @@ from app.settings import (
     WORLD_WIDTH, WORLD_HEIGHT,
 )
 
-_COLOR = (220, 80, 20)
-_COLOR_TIP = (255, 200, 0)
 _ARRIVE_THRESHOLD = 12.0
+_IMAGE_PATH = "resources/images/mining_vehicle/rocket_mining_30x34.png"
 
 
 class MiningRocket(Entity):
+    _base_image = None
+
+    @classmethod
+    def _load_image(cls):
+        cls._base_image = pygame.image.load(_IMAGE_PATH).convert_alpha()
+
     def __init__(self, start_x, start_y, target_x, target_y, target_col, target_row):
         super().__init__(
             start_x - MINING_ROCKET_WIDTH / 2,
@@ -34,6 +39,11 @@ class MiningRocket(Entity):
             dist = 1.0
         self.vx = dx / dist * MINING_ROCKET_SPEED
         self.vy = dy / dist * MINING_ROCKET_SPEED
+
+        if MiningRocket._base_image is None:
+            MiningRocket._load_image()
+        angle_deg = -math.degrees(math.atan2(self.vy, self.vx)) - 90
+        self.image = pygame.transform.rotate(MiningRocket._base_image, angle_deg)
 
     def _cx(self):
         return self.x + self.width / 2
@@ -57,7 +67,6 @@ class MiningRocket(Entity):
             self.alive = False
 
     def draw(self, surface, camera):
-        sx, sy = camera.apply(self.x, self.y)
-        w, h = self.width, self.height
-        pygame.draw.rect(surface, _COLOR, (sx, sy, w, h))
-        pygame.draw.rect(surface, _COLOR_TIP, (sx + 2, sy, w - 4, h // 4))
+        sx, sy = camera.apply(self._cx(), self._cy())
+        rect = self.image.get_rect(center=(sx, sy))
+        surface.blit(self.image, rect)

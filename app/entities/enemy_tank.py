@@ -9,6 +9,7 @@ from app.settings import (
 )
 from app.entities.entity import Entity
 from app.entities.bullet import Bullet
+from app.sounds import play_shoot
 
 
 class EnemyTank(Entity):
@@ -138,10 +139,11 @@ class EnemyTank(Entity):
         # Evasion: dodge incoming bullets (overrides movement if danger)
         self._try_evade(player_bullets)
 
-        # Shooting
+        # Shooting (this method runs only when tank is in camera view)
         self.shoot_timer -= dt
         if self.shoot_timer <= 0:
             self.shoot_timer = self._shoot_cooldown
+            play_shoot()
             return Bullet(self.x, self.y, self.direction,
                           self.width, self.height, self.game_map)
         return None

@@ -2,8 +2,10 @@ import random
 
 import pygame
 
+from app.settings import SCREEN_WIDTH, SCREEN_HEIGHT
 from app.entities.entity import Entity
 from app.entities.bullet import Bullet
+from app.sounds import play_shoot
 
 
 class Turret(Entity):
@@ -27,7 +29,7 @@ class Turret(Entity):
         self.shoot_timer = random.uniform(0, shoot_cooldown)
         self.target_pos = (x, y)
 
-    def update(self, dt):
+    def update(self, dt, camera):
         if not self.alive:
             return None
 
@@ -46,8 +48,15 @@ class Turret(Entity):
         self.shoot_timer -= dt
         if self.shoot_timer <= 0:
             self.shoot_timer = self._shoot_cooldown
+            if self._is_in_camera(camera):
+                play_shoot()
             return Bullet(self.x, self.y, self.direction, self.width, self.height, self.game_map)
         return None
+
+    def _is_in_camera(self, camera):
+        sx, sy = camera.apply(self.x, self.y)
+        return (sx + self.width > 0 and sx < SCREEN_WIDTH
+                and sy + self.height > 0 and sy < SCREEN_HEIGHT)
 
     def destroy(self):
         self.alive = False

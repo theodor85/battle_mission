@@ -19,6 +19,13 @@ class Map:
         self._generate_lakes()
         self._clear_spawn_area()
         self._ensure_connectivity()
+        def _load_tile(path):
+            raw = pygame.image.load(path).convert()
+            return pygame.transform.scale(raw, (TILE_SIZE, TILE_SIZE))
+
+        self._rock_texture = _load_tile("resources/images/textures/rock_tile.png")
+        self._grass_texture = _load_tile("resources/images/textures/grass_tile.png")
+        self._water_texture = _load_tile("resources/images/textures/water_tile.png")
 
     def _generate_mountains(self):
         p = self.profile
@@ -243,8 +250,16 @@ class Map:
                 world_x = c * TILE_SIZE
                 world_y = r * TILE_SIZE
                 screen_x, screen_y = camera.apply(world_x, world_y)
-                pygame.draw.rect(
-                    surface,
-                    TILE_COLORS[self.tiles[r][c]],
-                    (screen_x, screen_y, TILE_SIZE, TILE_SIZE),
-                )
+                tile = self.tiles[r][c]
+                if tile == ROCK:
+                    surface.blit(self._rock_texture, (screen_x, screen_y))
+                elif tile == GROUND:
+                    surface.blit(self._grass_texture, (screen_x, screen_y))
+                elif tile == WATER:
+                    surface.blit(self._water_texture, (screen_x, screen_y))
+                else:
+                    pygame.draw.rect(
+                        surface,
+                        TILE_COLORS[tile],
+                        (screen_x, screen_y, TILE_SIZE, TILE_SIZE),
+                    )

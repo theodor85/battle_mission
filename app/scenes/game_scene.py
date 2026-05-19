@@ -40,6 +40,7 @@ class GameScene(Scene):
         self._landscape = landscape or DEFAULT_LANDSCAPE
         self._difficulty = difficulty or DEFAULT_DIFFICULTY
 
+        pygame.mixer.stop()  # release channels leaked by entities from a previous run
         pygame.mixer.music.load(MUSIC_PATH)
         pygame.mixer.music.set_volume(MUSIC_VOLUME if music_on else 0)
         pygame.mixer.music.play(loops=-1)
@@ -187,7 +188,7 @@ class GameScene(Scene):
                          self.player.y + self.player.height / 2)
         for turret in self.turrets:
             turret.target_pos = player_center
-            enemy_bullet = turret.update(dt)
+            enemy_bullet = turret.update(dt, self.camera)
             if enemy_bullet is not None:
                 self.enemy_bullets.add(enemy_bullet)
 

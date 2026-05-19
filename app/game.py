@@ -7,6 +7,7 @@ from app.scenes.title_scene import TitleScene
 class Game:
     def __init__(self):
         pygame.init()
+        pygame.mixer.set_num_channels(32)
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Battle Mission")
         self.clock = pygame.time.Clock()

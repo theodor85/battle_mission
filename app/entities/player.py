@@ -7,6 +7,7 @@ from app.settings import (
 )
 from app.entities.entity import Entity
 from app.entities.bullet import Bullet
+from app.sounds import play_shoot
 
 
 class Player(Entity):
@@ -117,6 +118,7 @@ class Player(Entity):
         pressed = pygame.key.get_pressed()
         if pressed[K_SPACE] and self.shoot_timer <= 0:
             self.shoot_timer = PLAYER_SHOOT_COOLDOWN
+            play_shoot()
             return Bullet(self.x, self.y, self.direction,
                           self.width, self.height, self.game_map)
         return None
