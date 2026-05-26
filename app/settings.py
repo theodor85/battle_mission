@@ -23,15 +23,33 @@ MAP_ROWS = 50
 WORLD_WIDTH = MAP_COLS * TILE_SIZE
 WORLD_HEIGHT = MAP_ROWS * TILE_SIZE
 
-# Tile types
-GROUND = 0
-ROCK = 1
-WATER = 2
+# Tile behaviour types
+GROUND = 0   # can drive, bullets fly over
+WATER  = 1   # can't drive, bullets fly over
+ROCK   = 2   # can't drive, bullets explode
+BRICK  = 3   # can't drive, bullets destroy tile → GROUND
 
 TILE_COLORS = {
     GROUND: (34, 139, 34),
-    ROCK: (128, 128, 128),
-    WATER: (0, 105, 148),
+    WATER:  (0, 105, 148),
+    ROCK:   (128, 128, 128),
+    BRICK:  (180, 80, 40),
+}
+
+# Named tile definitions: each has a texture path and a behaviour type
+TILES = {
+    'GRASS': {'path': "resources/images/textures/grass_tile.png", 'type': GROUND},
+    'WATER': {'path': "resources/images/textures/water_tile.png", 'type': WATER},
+    'ROCK':  {'path': "resources/images/textures/rock_tile.png",  'type': ROCK},
+    'BRICK': {'path': None, 'type': BRICK},
+}
+
+# Default named tile for each behaviour type (used when converting, e.g. BRICK → GROUND)
+DEFAULT_TILE = {
+    GROUND: 'GRASS',
+    WATER:  'WATER',
+    ROCK:   'ROCK',
+    BRICK:  'BRICK',
 }
 
 # Terrain generation — see app/landscape.py for profiles

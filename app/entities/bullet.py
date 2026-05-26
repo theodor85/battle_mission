@@ -2,7 +2,8 @@ import pygame
 
 from app.settings import (
     WORLD_WIDTH, WORLD_HEIGHT,
-    TILE_SIZE, MAP_COLS, MAP_ROWS, ROCK,
+    TILE_SIZE, MAP_COLS, MAP_ROWS,
+    ROCK, BRICK, GROUND, TILES, DEFAULT_TILE,
     BULLET_SPEED,
 )
 from app.entities.entity import Entity
@@ -61,8 +62,12 @@ class Bullet(Entity):
         col = int(cx // TILE_SIZE)
         row = int(cy // TILE_SIZE)
         if 0 <= row < MAP_ROWS and 0 <= col < MAP_COLS:
-            if self.game_map.tiles[row][col] == ROCK:
+            tile_type = TILES[self.game_map.tiles[row][col]]['type']
+            if tile_type == ROCK:
                 self.hit_pos = (self.x, self.y)
+                self.alive = False
+            elif tile_type == BRICK:
+                self.game_map.set_tile(row, col, DEFAULT_TILE[GROUND])
                 self.alive = False
 
     def draw(self, surface, camera):

@@ -8,7 +8,7 @@ from pygame.locals import QUIT
 from app.scenes.scene import Scene
 from app.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BLACK,
-    MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND,
+    MAP_COLS, MAP_ROWS, TILE_SIZE, GROUND, TILES,
     MOVING_POWER, BULLET_DAMAGE,
     MUSIC_PATH, MUSIC_VOLUME, MUSIC_FADEOUT_MS,
     GAME_OVER_DELAY, DEFAULT_LANDSCAPE, DEFAULT_DIFFICULTY,
@@ -95,7 +95,7 @@ class GameScene(Scene):
         for dr in range(MAP_ROWS // 2):
             r = MAP_ROWS // 2 + dr
             c = MAP_COLS // 2
-            if self.map.tiles[r][c] == GROUND:
+            if TILES[self.map.tiles[r][c]]['type'] == GROUND:
                 self.player.x = float(c * TILE_SIZE)
                 self.player.y = float(r * TILE_SIZE)
                 return
@@ -107,7 +107,7 @@ class GameScene(Scene):
         candidates = []
         for r in range(MAP_ROWS):
             for c in range(MAP_COLS):
-                if self.map.tiles[r][c] != GROUND:
+                if TILES[self.map.tiles[r][c]]['type'] != GROUND:
                     continue
                 if (abs(r - center_r) <= clear_radius
                         and abs(c - center_c) <= clear_radius):
@@ -127,7 +127,7 @@ class GameScene(Scene):
         candidates = []
         for r in range(MAP_ROWS):
             for c in range(MAP_COLS):
-                if self.map.tiles[r][c] != GROUND:
+                if TILES[self.map.tiles[r][c]]['type'] != GROUND:
                     continue
                 if (abs(r - center_r) <= clear_radius
                         and abs(c - center_c) <= clear_radius):
@@ -439,7 +439,7 @@ class GameScene(Scene):
 
     def _on_mining_rocket_landed(self, col, row, world_x, world_y):
         self.explosions.add(Explosion(world_x, world_y))
-        if self.map.tiles[row][col] == GROUND:
+        if TILES[self.map.tiles[row][col]]['type'] == GROUND:
             self.mines[(col, row)] = random.randrange(len(self._mine_sprites))
 
     def _check_mine_collision(self):
@@ -477,14 +477,14 @@ class GameScene(Scene):
             (c, r)
             for r in range(MAP_ROWS)
             for c in range(MAP_COLS)
-            if (self.map.tiles[r][c] == GROUND
+            if (TILES[self.map.tiles[r][c]]['type'] == GROUND
                 and abs(r - player_row) + abs(c - player_col) >= min_dist)
         ]
         if not candidates:
             candidates = [(c, r)
                           for r in range(MAP_ROWS)
                           for c in range(MAP_COLS)
-                          if self.map.tiles[r][c] == GROUND]
+                          if TILES[self.map.tiles[r][c]]['type'] == GROUND]
         col, row = random.choice(candidates)
         return (col * TILE_SIZE + TILE_SIZE // 2,
                 row * TILE_SIZE + TILE_SIZE // 2)

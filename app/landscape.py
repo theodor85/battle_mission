@@ -11,6 +11,7 @@ class LandscapeProfile:
     lake_count: int
     lake_max_size: int
     spawn_clear_radius: int
+    brick_cluster_count: int
 
 
 STEPPE = LandscapeProfile(
@@ -22,6 +23,7 @@ STEPPE = LandscapeProfile(
     lake_count=2,
     lake_max_size=20,
     spawn_clear_radius=8,
+    brick_cluster_count=4,
 )
 
 MOUNTAINS = LandscapeProfile(
@@ -33,6 +35,7 @@ MOUNTAINS = LandscapeProfile(
     lake_count=3,
     lake_max_size=20,
     spawn_clear_radius=3,
+    brick_cluster_count=3,
 )
 
 SWAMP = LandscapeProfile(
@@ -44,6 +47,7 @@ SWAMP = LandscapeProfile(
     lake_count=20,
     lake_max_size=18,
     spawn_clear_radius=3,
+    brick_cluster_count=5,
 )
 
 LANDSCAPES = [STEPPE, MOUNTAINS, SWAMP]
