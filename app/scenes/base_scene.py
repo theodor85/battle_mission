@@ -9,9 +9,10 @@ from app.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BLACK,
     PLAYER_MAX_HP, HQ_FADE_DURATION,
     MUSIC_PATH, MUSIC_VOLUME,
+    HELICOPTER_WIDTH, HELICOPTER_HEIGHT,
 )
 from app.locations import BaseLocation
-from app.entities import Player
+from app.entities import Player, EntityList, Helicopter
 from app.camera import Camera
 from app.hud import HUD
 from app.landscape import LANDSCAPES
@@ -40,12 +41,18 @@ class BaseScene(Scene):
         self.player = Player(self.map)
         self.player.x, self.player.y = self.location.player_spawn
         self.player.hp = PLAYER_MAX_HP
+        self.player.frozen = True
+        self.player.visible = False
         self.hud = HUD(self.player, [], [], [])
 
         self._fade_alpha = 0.0
         self._fading = False
         self._fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         self._fade_surface.fill(BLACK)
+
+        self._intro = True
+        self.helicopters = EntityList()
+        self._spawn_player_delivery_helicopter()
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -56,11 +63,20 @@ class BaseScene(Scene):
     def update(self, dt):
         self.hud.update(dt)
 
+        for h in self.helicopters:
+            h.update(dt, self.camera)
+        self.helicopters.prune()
+
         if self._fading:
             self._fade_alpha = min(255.0,
                                    self._fade_alpha + (255.0 / HQ_FADE_DURATION) * dt)
             if self._fade_alpha >= 255.0:
                 self._goto_next_mission()
+            return
+
+        if self._intro:
+            self.camera.update(self.player.x, self.player.y,
+                               self.player.speed_x, self.player.speed_y, dt)
             return
 
         self.player.blockers = [r for b in self.location.buildings
@@ -77,6 +93,8 @@ class BaseScene(Scene):
         self.map.draw(self.screen, self.camera)
         for b in self.location.buildings:
             b.draw(self.screen, self.camera)
+        for h in self.helicopters:
+            h.draw(self.screen, self.camera)
         self.player.draw(self.screen, self.camera)
         self.hud.draw(self.screen)
 
@@ -85,6 +103,24 @@ class BaseScene(Scene):
             self.screen.blit(self._fade_surface, (0, 0))
 
         pygame.display.update()
+
+    def _spawn_player_delivery_helicopter(self):
+        target_x = self.player.x + self.player.width / 2
+        target_y = self.player.y + self.player.height / 2
+
+        # Spawn from the left edge; exits left — exit check (x+w < -100) is world-size independent
+        spawn_x = -HELICOPTER_WIDTH / 2
+        spawn_y = target_y
+        direction = 'right'
+
+        def on_delivered():
+            self.player.visible = True
+            self.player.frozen = False
+            self._intro = False
+
+        h = Helicopter(spawn_x, spawn_y, target_x, target_y, direction,
+                       vehicle=None, on_hover_complete=on_delivered)
+        self.helicopters.add(h)
 
     def _goto_next_mission(self):
         from app.scenes.game_scene import GameScene

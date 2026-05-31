@@ -34,6 +34,8 @@ class Player(Entity):
         self.shoot_timer = 0.0
         self.hp = PLAYER_MAX_HP
         self.blockers = []
+        self.frozen = False
+        self.visible = True
 
     def update(self, dt):
         self._handle_input()
@@ -43,11 +45,16 @@ class Player(Entity):
         self._update_direction()
 
     def draw(self, surface, camera):
+        if not self.visible:
+            return
         surface.blit(self.image, camera.apply(self.x, self.y))
 
     def _handle_input(self):
         self.moving_power_x = 0.0
         self.moving_power_y = 0.0
+
+        if self.frozen:
+            return
 
         pressed_keys = pygame.key.get_pressed()
 
@@ -118,6 +125,8 @@ class Player(Entity):
 
     def shoot(self, dt):
         self.shoot_timer -= dt
+        if self.frozen:
+            return None
         pressed = pygame.key.get_pressed()
         if pressed[K_SPACE] and self.shoot_timer <= 0:
             self.shoot_timer = PLAYER_SHOOT_COOLDOWN

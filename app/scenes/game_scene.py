@@ -20,7 +20,7 @@ from app.settings import (
     MINING_VEHICLE_INITIAL_COOLDOWN_1, MINING_VEHICLE_INITIAL_COOLDOWN_2,
     MINING_VEHICLE_REDELIVERY_COOLDOWN, MINING_ROCKET_SHOOT_COOLDOWN,
     HELICOPTER_DROP_MIN_DIST_TILES, HELICOPTER_WIDTH, HELICOPTER_HEIGHT,
-    MINE_DAMAGE,
+    MINE_DAMAGE, HQ_FADE_DURATION,
 )
 from app.map import Map
 from app.entities import (
@@ -53,6 +53,13 @@ class GameScene(Scene):
         self._place_player_on_ground()
         if player_hp is not None:
             self.player.hp = player_hp
+        self.phase = 'intro'
+        self.player.frozen = True
+        self.player.visible = False
+        self._fade_alpha = 0.0
+        self._fade_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self._fade_surface.fill(BLACK)
+        self._outro_picked_up = False
         self.turrets = self._spawn_turrets()
         self.enemy_tanks = self._spawn_enemy_tanks()
         self.player_bullets = EntityList()
@@ -83,6 +90,8 @@ class GameScene(Scene):
         ]
 
         self.hud = HUD(self.player, self.turrets, self.enemy_tanks, self.mining_vehicles)
+
+        self._spawn_player_delivery_helicopter()
 
         self.events = EventBus()
         self.events.listen("turret_destroyed", self._on_turret_destroyed)
@@ -163,6 +172,18 @@ class GameScene(Scene):
             exp.update(dt)
         self.explosions.prune()
 
+        self._update_helicopters(dt)
+
+        if self.phase == 'intro':
+            self.player.update(dt)
+            self.camera.update(self.player.x, self.player.y,
+                               self.player.speed_x, self.player.speed_y, dt)
+            return
+
+        if self.phase == 'outro':
+            self._update_outro(dt)
+            return
+
         if self.game_over:
             self._game_over_timer += dt
             if self._game_over_timer >= GAME_OVER_DELAY:
@@ -231,7 +252,6 @@ class GameScene(Scene):
 
         # Mining system
         self._update_mining_system(dt, player_center)
-        self._update_helicopters(dt)
         self._update_mining_rockets(dt)
         self._check_mine_collision()
 
@@ -247,7 +267,7 @@ class GameScene(Scene):
         # Проверка победы
         if (all(not t.alive for t in self.turrets)
                 and all(not t.alive for t in self.enemy_tanks)):
-            self._trigger_game_over("Victory!")
+            self._start_outro()
 
     def draw(self):
         self.screen.fill(BLACK)
@@ -264,8 +284,6 @@ class GameScene(Scene):
             vehicle.draw(self.screen, self.camera)
         for rocket in self.mining_rockets:
             rocket.draw(self.screen, self.camera)
-        for h in self.helicopters:
-            h.draw(self.screen, self.camera)
         for b in self.player_bullets:
             b.draw(self.screen, self.camera)
         for b in self.enemy_bullets:
@@ -273,9 +291,16 @@ class GameScene(Scene):
         for m in self.missiles:
             m.draw(self.screen, self.camera)
         self.player.draw(self.screen, self.camera)
+        for h in self.helicopters:
+            h.draw(self.screen, self.camera)
         for exp in self.explosions:
             exp.draw(self.screen, self.camera)
         self.hud.draw(self.screen)
+
+        if self._fade_alpha > 0:
+            self._fade_surface.set_alpha(int(self._fade_alpha))
+            self.screen.blit(self._fade_surface, (0, 0))
+
         pygame.display.update()
 
     def _draw_mines(self):
@@ -525,6 +550,82 @@ class GameScene(Scene):
         h = Helicopter(spawn_x, spawn_y, drop_x, drop_y, direction,
                        vehicle=vehicle, on_hover_complete=on_delivery)
         self.helicopters.add(h)
+
+    def _spawn_player_delivery_helicopter(self):
+        target_x = self.player.x + self.player.width / 2
+        target_y = self.player.y + self.player.height / 2
+        edge = self._farthest_edge(target_x, target_y)
+
+        hw = HELICOPTER_WIDTH / 2
+        hh = HELICOPTER_HEIGHT / 2
+        if edge == 'left':
+            spawn_x, spawn_y = -hw, target_y
+            direction = 'right'
+        elif edge == 'right':
+            spawn_x, spawn_y = WORLD_WIDTH + hw, target_y
+            direction = 'left'
+        elif edge == 'top':
+            spawn_x, spawn_y = target_x, -hh
+            direction = 'down'
+        else:
+            spawn_x, spawn_y = target_x, WORLD_HEIGHT + hh
+            direction = 'up'
+
+        def on_delivered():
+            self.player.visible = True
+            self.player.frozen = False
+            self.phase = 'playing'
+
+        h = Helicopter(spawn_x, spawn_y, target_x, target_y, direction,
+                       vehicle=None, on_hover_complete=on_delivered)
+        self.helicopters.add(h)
+
+    def _start_outro(self):
+        self.phase = 'outro'
+        self.player.frozen = True
+        pygame.mixer.music.fadeout(MUSIC_FADEOUT_MS)
+        self._spawn_player_pickup_helicopter_outro()
+
+    def _spawn_player_pickup_helicopter_outro(self):
+        vcx = self.player.x + self.player.width / 2
+        vcy = self.player.y + self.player.height / 2
+
+        hw = HELICOPTER_WIDTH / 2
+        hh = HELICOPTER_HEIGHT / 2
+        options = [
+            ('left', vcx, -hw, vcy, 'right'),
+            ('right', WORLD_WIDTH - vcx, WORLD_WIDTH + hw, vcy, 'left'),
+            ('top', vcy, vcx, -hh, 'down'),
+            ('bottom', WORLD_HEIGHT - vcy, vcx, WORLD_HEIGHT + hh, 'up'),
+        ]
+        _, _, spawn_x, spawn_y, direction = min(options, key=lambda o: o[1])
+
+        def on_picked_up():
+            self.player.visible = False
+            self._outro_picked_up = True
+
+        h = Helicopter(spawn_x, spawn_y, vcx, vcy, direction,
+                       vehicle=None, on_hover_complete=on_picked_up)
+        self.helicopters.add(h)
+
+    def _update_outro(self, dt):
+        self.camera.update(self.player.x, self.player.y,
+                           self.player.speed_x, self.player.speed_y, dt)
+        if self._outro_picked_up:
+            self._fade_alpha = min(
+                255.0, self._fade_alpha + (255.0 / HQ_FADE_DURATION) * dt
+            )
+            if self._fade_alpha >= 255.0:
+                for h in self.helicopters:
+                    h._stop_audio()
+                from app.scenes.game_over_scene import GameOverScene
+                self.next_scene = GameOverScene(
+                    self.screen, self.clock, "Victory!",
+                    background=self.screen.copy(),
+                    music_on=self._music_on,
+                    landscape=self._landscape,
+                    difficulty=self._difficulty,
+                )
 
     def _spawn_pickup_helicopter(self, vehicle):
         vcx = vehicle.x + vehicle.width / 2
