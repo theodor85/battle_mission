@@ -33,6 +33,12 @@ jobs:
           --add-data "resources;resources"
           main.py
 
+      - name: Delete existing latest release
+        run: gh release delete latest --yes --cleanup-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
