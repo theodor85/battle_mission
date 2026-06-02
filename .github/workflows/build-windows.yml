@@ -1,0 +1,39 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pygame==2.6.1 pyinstaller
+
+      - name: Build EXE with PyInstaller
+        run: >
+          pyinstaller
+          --name "BattleMission"
+          --onefile
+          --windowed
+          --add-data "resources;resources"
+          main.py
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BattleMission-windows
+          path: dist/BattleMission.exe
+          retention-days: 30
