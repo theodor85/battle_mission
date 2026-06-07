@@ -44,3 +44,7 @@ class Camera:
     def apply(self, world_x, world_y):
         return (int(world_x - self.x) + self._shake_offset_x,
                 int(world_y - self.y) + self._shake_offset_y)
+
+    def is_visible(self, world_x, world_y):
+        return (self.x <= world_x <= self.x + SCREEN_WIDTH
+                and self.y <= world_y <= self.y + SCREEN_HEIGHT)

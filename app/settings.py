@@ -139,6 +139,8 @@ MUSIC_FADEOUT_MS = 2000  # плавное затухание при game over (�
 # Sound effects
 SHOOT_SOUND_PATH = "resources/sounds/shoot/shoot.mp3"
 SHOOT_SOUND_VOLUME = 0.3
+HIT_SOUND_PATH = "resources/sounds/shoot/hit.mp3"
+HIT_SOUND_VOLUME = 0.1
 
 # Scene fonts
 TITLE_FONT_SIZE = 72

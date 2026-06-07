@@ -47,6 +47,7 @@ class Bullet(Entity):
         self.vx = dx * BULLET_SPEED
         self.vy = dy * BULLET_SPEED
         self.hit_pos = None
+        self.brick_hit_pos = None
 
     def update(self, dt):
         self.x += self.vx * dt
@@ -68,6 +69,7 @@ class Bullet(Entity):
                 self.alive = False
             elif tile_type == BRICK:
                 self.game_map.set_tile(row, col, DEFAULT_TILE[GROUND])
+                self.brick_hit_pos = (self.x, self.y)
                 self.alive = False
 
     def draw(self, surface, camera):

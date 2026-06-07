@@ -31,6 +31,7 @@ from app.camera import Camera
 from app.events import EventBus
 from app.collision import check_collisions
 from app.hud import HUD
+from app.sounds import play_hit
 
 
 class GameScene(Scene):
@@ -99,6 +100,7 @@ class GameScene(Scene):
         self.events.listen("bullet_hit_rock", self._on_bullet_hit_rock)
         self.events.listen("enemy_tank_hit", self._on_enemy_tank_hit)
         self.events.listen("mining_vehicle_hit", self._on_mining_vehicle_hit)
+        self.events.listen("bullet_hit_brick", self._on_bullet_hit_brick)
 
     def _place_player_on_ground(self):
         for dr in range(MAP_ROWS // 2):
@@ -311,11 +313,18 @@ class GameScene(Scene):
 
     # ── Event handlers ──────────────────────────────────────────
 
+    def _play_hit_sound(self, data):
+        """Звук попадания — только если оно произошло в зоне видимости камеры."""
+        if self.camera.is_visible(data["x"], data["y"]):
+            play_hit()
+
     def _on_turret_destroyed(self, data):
+        self._play_hit_sound(data)
         data["turret"].destroy()
         self.explosions.add(Explosion(data["x"], data["y"]))
 
     def _on_player_hit(self, data):
+        self._play_hit_sound(data)
         self.player.hp -= data["damage"]
         self.explosions.add(Explosion(data["x"], data["y"]))
         if self.player.hp <= 0:
@@ -324,6 +333,7 @@ class GameScene(Scene):
             self._trigger_game_over("Game Over")
 
     def _on_enemy_tank_hit(self, data):
+        self._play_hit_sound(data)
         tank = data["tank"]
         tank.hp -= BULLET_DAMAGE
         self.explosions.add(Explosion(data["x"], data["y"]))
@@ -331,9 +341,14 @@ class GameScene(Scene):
             tank.destroy()
 
     def _on_bullet_hit_rock(self, data):
+        self._play_hit_sound(data)
         self.explosions.add(Explosion(data["x"], data["y"]))
 
+    def _on_bullet_hit_brick(self, data):
+        self._play_hit_sound(data)
+
     def _on_mining_vehicle_hit(self, data):
+        self._play_hit_sound(data)
         vehicle = data["vehicle"]
         vehicle.hp -= BULLET_DAMAGE
         self.explosions.add(Explosion(data["x"], data["y"]))

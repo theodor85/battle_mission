@@ -76,7 +76,13 @@ def _bullets_vs_mining_vehicles(bullets, mining_vehicles, events):
 
 def _bullets_vs_rocks(player_bullets, enemy_bullets, events):
     for b in list(player_bullets) + list(enemy_bullets):
-        if not b.alive and b.hit_pos is not None:
+        if b.alive:
+            continue
+        if b.hit_pos is not None:
             events.post("bullet_hit_rock",
                         x=b.hit_pos[0] + b.width / 2,
                         y=b.hit_pos[1] + b.height / 2)
+        elif b.brick_hit_pos is not None:
+            events.post("bullet_hit_brick",
+                        x=b.brick_hit_pos[0] + b.width / 2,
+                        y=b.brick_hit_pos[1] + b.height / 2)
